@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pegas - Controle de Fluxo v1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos de Interface */
+        .tab-active { border-bottom: 3px solid #3b82f6 !important; color: #3b82f6 !important; font-weight: 800 !important; background-color: white !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .sub-tab-active { background-color: #f0fdf4 !important; color: #16a34a !important; border-color: #86efac !important; }
+        .sub-tab-dev-active { background-color: #fff7ed !important; color: #ea580c !important; border-color: #fdba74 !important; }
+        .content-tab { display: none; }
+        .content-tab.active { display: block !important; }
+        .nav-wrapper { position: relative; display: flex; align-items: center; background: #f8fafc; }
+        .nav-scroll { scroll-behavior: smooth; }
+        .arrow-btn { background: #f8fafc; z-index: 60; padding: 0 10px; height: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; color: #64748b; }
+        .btn-action { transition: all 0.2s; cursor: pointer; }
+        .fixa-chip { padding: 4px 10px; background: #e2e8f0; border-radius: 12px; font-size: 10px; font-weight: bold; color: #475569; cursor: pointer; white-space: nowrap; margin-bottom: 5px; }
+
+        /* Estilos de Impressão (PDF) */
+        @media print {
+            .nav-wrapper, .bg-slate-800, .fixa-chip, button, .btn-action, input, .bg-slate-50, .mb-4.p-4, .print-hidden { display: none !important; }
+            .max-w-6xl { border: none; shadow: none; width: 100%; max-width: 100%; }
+            .content-tab.active { display: block !important; padding: 0; }
+            table { width: 100%; border: 1px solid #000 !important; }
+            th, td { border: 1px solid #ddd !important; padding: 8px !important; }
+            h3 { display: block !important; font-size: 18pt; margin-bottom: 20px; border-bottom: 2px solid #333; color: black !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-2 md:p-8">
+
+    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+        <div class="bg-slate-800 p-6 text-white flex justify-between items-center print-hidden">
+            <div>
+                <h1 class="text-2xl font-bold italic uppercase tracking-widest">Pegas <span class="text-xs font-normal opacity-50">v1.0</span></h1>
+                <p class="text-slate-400 text-sm">Controle de Fluxo</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="gerarPDF()" class="flex items-center gap-2 text-[10px] bg-red-700 hover:bg-red-600 px-3 py-2 rounded border border-red-500 font-bold uppercase transition-all">
+                    BAIXAR PDF DO MÊS
+                </button>
+            </div>
+        </div>
+
+        <div class="nav-wrapper border-b sticky top-0 z-50 print-hidden">
+            <button onclick="scrollNav(-100)" class="arrow-btn"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="3" d="M15 19l-7-7 7-7" /></svg></button>
+            <nav id="nav-principal" class="nav-scroll flex overflow-x-auto no-scrollbar flex-1 bg-slate-50 font-bold">
+                <button onclick="mudarAba('resumo')" id="btn-resumo" class="nav-btn px-5 py-4 text-[10px] uppercase whitespace-nowrap tab-active">Resumo Anual</button>
+                <button onclick="mudarAba('salario')" id="btn-salario" class="nav-btn px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-green-600">Receitas</button>
+                <button onclick="mudarAba('devedores')" id="btn-devedores" class="nav-btn px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-orange-600">Devedores</button>
+                <script>
+                    const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                    const mesesIds = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+                    mesesNomes.forEach((mes, i) => {
+                        document.write(`<button onclick="mudarAba('${mesesIds[i]}')" id="btn-${mesesIds[i]}" class="nav-btn px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l border-gray-200">${mes}</button>`);
+                    });
+                </script>
+            </nav>
+            <button onclick="scrollNav(100)" class="arrow-btn"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="3" d="M9 5l7 7-7 7" /></svg></button>
+        </div>
+
+        <div id="aba-resumo" class="p-6 content-tab active">
+            <h3 class="hidden print:block font-bold mb-4 uppercase">Relatório: Resumo Anual</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100 uppercase font-bold text-slate-500">
+                            <th class="p-4 border-b">Mês</th>
+                            <th class="p-4 border-b text-right text-green-700">Receitas (+)</th>
+                            <th class="p-4 border-b text-right text-red-700">Gastos (-)</th>
+                            <th class="p-4 border-b text-right bg-slate-200 text-slate-800">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-resumo"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="aba-salario" class="p-6 content-tab">
+            <h3 class="text-xl font-bold text-green-700 mb-4 uppercase">Receitas</h3>
+            <div class="flex overflow-x-auto gap-2 mb-6 no-scrollbar print-hidden" id="sub-nav-salario"></div>
+            <div id="container-salario-meses"></div>
+        </div>
+
+        <div id="aba-devedores" class="p-6 content-tab">
+            <h3 class="text-xl font-bold text-orange-700 mb-4 uppercase">Devedores</h3>
+            <div class="flex overflow-x-auto gap-2 mb-6 no-scrollbar print-hidden" id="sub-nav-devedores"></div>
+            <div id="container-devedores-meses"></div>
+        </div>
+
+        <div id="container-gastos-meses"></div>
+    </div>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('pegas_db_v1')) || {
+            transacoes: mesesIds.reduce((acc, id) => {
+                acc[id] = { sal: [], dev: [], gas: [] };
+                return acc;
+            }, {})
+        };
+
+        const despesasFixas = ["Cartão Nubank", "Cartão Will", "Cartão Bradesco", "Internet", "Alimentação", "Luz"];
+
+        function salvarDB() {
+            localStorage.setItem('pegas_db_v1', JSON.stringify(db));
+            renderizarResumoGeral();
+        }
+
+        function scrollNav(amount) { document.getElementById('nav-principal').scrollLeft += amount; }
+        function gerarPDF() { window.print(); }
+
+        function inicializar() {
+            const corpoResumo = document.getElementById('corpo-resumo');
+            const subNavSal = document.getElementById('sub-nav-salario');
+            const subNavDev = document.getElementById('sub-nav-devedores');
+            const contSal = document.getElementById('container-salario-meses');
+            const contDev = document.getElementById('container-devedores-meses');
+            const contGas = document.getElementById('container-gastos-meses');
+
+            mesesIds.forEach((id, i) => {
+                corpoResumo.innerHTML += `
+                    <tr>
+                        <td class="p-4 border-b font-bold text-slate-600">${mesesNomes[i]}</td>
+                        <td id="res-sal-${id}" class="p-4 border-b text-right font-mono text-green-600">R$ 0,00</td>
+                        <td id="res-gas-${id}" class="p-4 border-b text-right font-mono text-red-500">R$ 0,00</td>
+                        <td id="res-tot-${id}" class="p-4 border-b text-right font-mono font-bold bg-slate-50">R$ 0,00</td>
+                    </tr>`;
+
+                const btnHtml = (tipo) => `<button onclick="mudarMesSubAba('${id}', '${tipo}')" id="btn-${tipo}-${id}" class="px-3 py-1 border rounded-full text-[9px] font-bold uppercase whitespace-nowrap bg-white text-gray-500">${mesesNomes[i].substring(0,3)}</button>`;
+                subNavSal.innerHTML += btnHtml('sal');
+                subNavDev.innerHTML += btnHtml('dev');
+
+                contSal.innerHTML += `<div id="sal-mes-${id}" class="sal-content hidden">
+                    <h3 class="hidden print:block text-green-700 font-bold mb-4">RECEITAS: ${mesesNomes[i]}</h3>
+                    <div class="mb-4 p-4 bg-green-50 border rounded flex gap-2 print-hidden">
+                        <input type="text" id="desc-sal-${id}" placeholder="Fonte" class="flex-1 p-2 border rounded text-sm">
+                        <input type="number" id="valor-sal-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm">
+                        <button onclick="adicionarItem('${id}', 'sal')" class="bg-green-600 text-white px-4 rounded text-xs font-bold uppercase">OK</button>
+                    </div>
+                    <table class="w-full text-sm border"><tbody id="tabela-sal-${id}" class="bg-white"></tbody></table>
+                </div>`;
+
+                contDev.innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden">
+                    <h3 class="hidden print:block text-orange-700 font-bold mb-4">DEVEDORES: ${mesesNomes[i]}</h3>
+                    <div class="mb-4 p-4 bg-orange-50 border rounded flex gap-2 print-hidden">
+                        <input type="text" id="desc-dev-${id}" placeholder="Nome" class="flex-1 p-2 border rounded text-sm">
+                        <input type="number" id="valor-dev-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm">
+                        <button onclick="adicionarItem('${id}', 'dev')" class="bg-orange-600 text-white px-4 rounded text-xs font-bold uppercase">SALVAR</button>
+                    </div>
+                    <table class="w-full text-sm border"><tbody id="tabela-dev-${id}" class="bg-white"></tbody></table>
+                </div>`;
+
+                let chipsHtml = despesasFixas.map(f => `<span class="fixa-chip mr-1 print-hidden" onclick="preencherFixa('${id}', '${f}')">${f}</span>`).join('');
+                contGas.innerHTML += `<div id="aba-${id}" class="p-6 content-tab">
+                    <h3 class="text-xl font-bold text-slate-700 mb-2 uppercase">Fluxo: ${mesesNomes[i]}</h3>
+                    <div class="flex flex-wrap gap-1 mb-4 print-hidden">${chipsHtml}</div>
+                    <div class="mb-4 p-4 bg-slate-50 border rounded flex gap-2 print-hidden">
+                        <input type="text" id="desc-${id}" placeholder="Descrição" class="flex-1 p-2 border rounded text-sm">
+                        <input type="number" id="valor-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm">
+                        <button onclick="adicionarItem('${id}', 'gas')" class="bg-blue-600 text-white px-4 rounded text-xs font-bold uppercase">OK</button>
+                    </div>
+                    <table class="w-full text-sm border"><tbody id="tabela-gas-${id}" class="bg-white"></tbody></table>
+                </div>`;
+            });
+            renderizarTudo();
+        }
+
+        function formatar(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+        function adicionarItem(mesId, tipo) {
+            let pref = tipo === 'sal' ? '-sal-' : (tipo === 'dev' ? '-dev-' : '-');
+            const d = document.getElementById(`desc${pref}${mesId}`), vInput = document.getElementById(`valor${pref}${mesId}`);
+            const v = parseFloat(vInput.value);
+            if(!d.value || isNaN(v)) return;
+            db.transacoes[mesId][tipo].push({ id: Date.now(), desc: d.value, valor: v });
+            d.value = ""; vInput.value = "";
+            salvarDB(); renderizarLista(mesId, tipo);
+        }
+
+        function renderizarLista(mesId, tipo) {
+            const container = document.getElementById(`tabela-${tipo === 'gas' ? 'gas' : tipo}-${mesId}`);
+            if(!container) return;
+            const color = tipo === 'sal' ? 'text-green-600' : (tipo === 'gas' ? 'text-red-500' : 'text-orange-600');
+            container.innerHTML = db.transacoes[mesId][tipo].map(item => `
+                <tr class="border-b">
+                    <td class="p-3 text-slate-700">${item.desc}</td>
+                    <td class="p-3 text-right font-bold ${color}">${formatar(item.valor)}</td>
+                    <td class="p-3 text-right print-hidden flex justify-end gap-3">
+                        <span onclick="editarItem('${mesId}', '${tipo}', ${item.id})" class="text-blue-500 font-bold cursor-pointer hover:scale-125 transition-all">✎</span>
+                        <span onclick="excluirItem('${mesId}', '${tipo}', ${item.id})" class="text-red-500 font-bold cursor-pointer hover:scale-125 transition-all">✕</span>
+                    </td>
+                </tr>`).join('');
+        }
+
+        function editarItem(mesId, tipo, itemId) {
+            const item = db.transacoes[mesId][tipo].find(i => i.id === itemId);
+            if (!item) return;
+            const nD = prompt("Nova descrição:", item.desc);
+            const nV = prompt("Novo valor:", item.valor);
+            if (nD !== null && nV !== null) {
+                item.desc = nD;
+                item.valor = parseFloat(nV) || 0;
+                salvarDB(); renderizarLista(mesId, tipo);
+            }
+        }
+
+        function excluirItem(mesId, tipo, itemId) {
+            if(!confirm("Excluir item?")) return;
+            db.transacoes[mesId][tipo] = db.transacoes[mesId][tipo].filter(i => i.id !== itemId);
+            salvarDB(); renderizarLista(mesId, tipo);
+        }
+
+        function renderizarResumoGeral() {
+            mesesIds.forEach(id => {
+                const rec = db.transacoes[id].sal.reduce((sum, i) => sum + i.valor, 0);
+                const gas = db.transacoes[id].gas.reduce((sum, i) => sum + i.valor, 0);
+                document.getElementById(`res-sal-${id}`).innerText = formatar(rec);
+                document.getElementById(`res-gas-${id}`).innerText = formatar(gas);
+                const saldo = rec - gas;
+                const el = document.getElementById(`res-tot-${id}`);
+                el.innerText = formatar(saldo);
+                el.style.color = saldo >= 0 ? '#2563eb' : '#dc2626';
+            });
+        }
+
+        function renderizarTudo() {
+            mesesIds.forEach(id => { renderizarLista(id, 'sal'); renderizarLista(id, 'dev'); renderizarLista(id, 'gas'); });
+            renderizarResumoGeral();
+        }
+
+        function mudarAba(idAlvo) {
+            document.querySelectorAll('.content-tab').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('tab-active'));
+            document.getElementById('aba-' + idAlvo).classList.add('active');
+            const btn = document.getElementById('btn-' + idAlvo);
+            btn.classList.add('tab-active');
+            btn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+            if(idAlvo === 'salario') mudarMesSubAba('jan', 'sal');
+            if(idAlvo === 'devedores') mudarMesSubAba('jan', 'dev');
+        }
+
+        function mudarMesSubAba(mesId, tipo) {
+            document.querySelectorAll(`.${tipo}-content`).forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll(`[id^="btn-${tipo}-"]`).forEach(btn => btn.classList.remove('sub-tab-active', 'sub-tab-dev-active'));
+            document.getElementById(`${tipo}-mes-${mesId}`).classList.remove('hidden');
+            document.getElementById(`btn-${tipo}-${mesId}`).classList.add(tipo === 'sal' ? 'sub-tab-active' : 'sub-tab-dev-active');
+        }
+
+        function preencherFixa(mesId, nome) {
+            document.getElementById(`desc-${mesId}`).value = nome;
+            document.getElementById(`valor-${mesId}`).focus();
+        }
+
+        window.onload = inicializar;
+    </script>
+</body>
+</html>
