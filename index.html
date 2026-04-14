@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pegas v1.1 - Controle de Fluxo</title>
+    <title>Pegas v1.1.1 - Controle de Fluxo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-active { border-bottom: 3px solid #3b82f6 !important; color: #3b82f6 !important; font-weight: 800 !important; background-color: white !important; }
@@ -14,15 +14,16 @@
         .content-tab { display: none; }
         .content-tab.active { display: block !important; }
         
-        /* MODO CELULAR FORÇADO */
         .modo-celular .max-w-6xl { max-width: 450px !important; margin: 0 auto; font-size: 14px; }
         .modo-celular .nav-btn { padding: 10px 12px !important; font-size: 8px !important; }
-        .modo-celular h1 { font-size: 18px !important; }
 
         .nav-wrapper { position: relative; display: flex; align-items: center; background: #f8fafc; }
         .nav-scroll { scroll-behavior: smooth; }
         .arrow-btn { background: #f8fafc; z-index: 60; padding: 0 12px; height: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; color: #64748b; font-size: 10px; }
         .fixa-chip { padding: 4px 10px; background: #e2e8f0; border-radius: 12px; font-size: 10px; font-weight: bold; color: #475569; cursor: pointer; white-space: nowrap; margin-bottom: 5px; margin-right: 4px; display: inline-block; }
+        
+        /* Efeito visual para indicar que é editável */
+        .editable-item:hover { background-color: #f1f5f9; cursor: pointer; border-radius: 4px; }
 
         @media print {
             .nav-wrapper, .bg-slate-800, .fixa-chip, button, input, .print-hidden { display: none !important; }
@@ -36,12 +37,12 @@
         
         <div class="bg-slate-800 p-4 md:p-6 text-white flex justify-between items-center print-hidden">
             <div>
-                <h1 class="text-xl md:text-2xl font-bold italic uppercase tracking-widest">Pegas <span class="text-xs font-normal opacity-50">v1.1</span></h1>
+                <h1 class="text-xl md:text-2xl font-bold italic uppercase tracking-widest">Pegas <span class="text-xs font-normal opacity-50">v1.1.1</span></h1>
                 <p class="text-slate-400 text-[10px] md:text-sm">Controle de Fluxo</p>
             </div>
             <div class="flex gap-2">
-                <button onclick="alternarModo()" id="btn-modo" class="text-[9px] bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded border border-slate-500 font-bold uppercase transition-all">MODO CELULAR</button>
-                <button onclick="window.print()" class="text-[9px] bg-red-700 hover:bg-red-600 px-3 py-2 rounded border border-red-500 font-bold uppercase transition-all">PDF</button>
+                <button onclick="alternarModo()" id="btn-modo" class="text-[9px] bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded border border-slate-500 font-bold uppercase">MODO CELULAR</button>
+                <button onclick="window.print()" class="text-[9px] bg-red-700 hover:bg-red-600 px-3 py-2 rounded border border-red-500 font-bold uppercase">PDF</button>
             </div>
         </div>
 
@@ -89,7 +90,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC_nKoE9Y_5KZiWVteb7bTsOPTYXc5g9kY",
@@ -139,8 +140,8 @@
                 subSal.innerHTML += `<button onclick="mudarMesSubAba('${id}', 'sal')" id="btn-sal-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold bg-white text-gray-500">${mesesNomes[i].substring(0,3)}</button>`;
                 subDev.innerHTML += `<button onclick="mudarMesSubAba('${id}', 'dev')" id="btn-dev-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold bg-white text-gray-500">${mesesNomes[i].substring(0,3)}</button>`;
 
-                contSal.innerHTML += `<div id="sal-mes-${id}" class="sal-content hidden"><div class="flex flex-col md:flex-row gap-2 mb-4 p-3 bg-green-50 rounded border"><input type="text" id="desc-sal-${id}" placeholder="Fonte" class="p-2 border rounded text-xs"><input type="number" id="valor-sal-${id}" placeholder="R$" class="p-2 border rounded text-xs"><button onclick="addItem('${id}', 'sal')" class="bg-green-600 text-white p-2 rounded text-xs font-bold">ADICIONAR</button></div><table class="w-full text-xs border"><tbody id="tabela-sal-${id}" class="bg-white"></tbody></table></div>`;
-                contDev.innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden"><div class="flex flex-col md:flex-row gap-2 mb-4 p-3 bg-orange-50 rounded border"><input type="text" id="desc-dev-${id}" placeholder="Nome" class="p-2 border rounded text-xs"><input type="number" id="valor-dev-${id}" placeholder="R$" class="p-2 border rounded text-xs"><button onclick="addItem('${id}', 'dev')" class="bg-orange-600 text-white p-2 rounded text-xs font-bold">ADICIONAR</button></div><table class="w-full text-xs border"><tbody id="tabela-dev-${id}" class="bg-white"></tbody></table></div>`;
+                contSal.innerHTML += `<div id="sal-mes-${id}" class="sal-content hidden"><div class="flex flex-col md:flex-row gap-2 mb-4 p-3 bg-green-50 rounded border"><input type="text" id="desc-sal-${id}" placeholder="Fonte" class="p-2 border rounded text-xs"><input type="number" id="valor-sal-${id}" placeholder="R$" class="p-2 border rounded text-xs"><button onclick="addItem('${id}', 'sal')" class="bg-green-600 text-white p-2 rounded text-xs font-bold uppercase">ADICIONAR</button></div><table class="w-full text-xs border"><tbody id="tabela-sal-${id}" class="bg-white"></tbody></table></div>`;
+                contDev.innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden"><div class="flex flex-col md:flex-row gap-2 mb-4 p-3 bg-orange-50 rounded border"><input type="text" id="desc-dev-${id}" placeholder="Nome" class="p-2 border rounded text-xs"><input type="number" id="valor-dev-${id}" placeholder="R$" class="p-2 border rounded text-xs"><button onclick="addItem('${id}', 'dev')" class="bg-orange-600 text-white p-2 rounded text-xs font-bold uppercase">ADICIONAR</button></div><table class="w-full text-xs border"><tbody id="tabela-dev-${id}" class="bg-white"></tbody></table></div>`;
 
                 let chips = despesasFixas.map(f => `<span class="fixa-chip" onclick="window.preencherFixa('${id}', '${f}')">${f}</span>`).join('');
                 contGas.innerHTML += `<div id="aba-${id}" class="p-4 md:p-6 content-tab"><h3 class="text-sm font-bold text-slate-700 mb-2 uppercase">${mesesNomes[i]}</h3><div class="flex flex-wrap mb-4">${chips}</div><div class="flex flex-col md:flex-row gap-2 mb-4 p-3 bg-slate-50 border rounded"><input type="text" id="desc-${id}" placeholder="Gasto" class="p-2 border rounded text-xs flex-1"><input type="number" id="valor-${id}" placeholder="R$" class="p-2 border rounded text-xs md:w-24"><button onclick="addItem('${id}', 'gas')" class="bg-blue-600 text-white p-2 rounded text-xs font-bold uppercase">OK</button></div><table class="w-full text-[11px] md:text-xs border"><tbody id="tabela-gas-${id}" class="bg-white"></tbody></table></div>`;
@@ -163,10 +164,7 @@
             const alvo = document.getElementById('aba-' + id);
             if(alvo) alvo.classList.add('active');
             const btn = document.getElementById('btn-' + id);
-            if(btn) {
-                btn.classList.add('tab-active');
-                btn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-            }
+            if(btn) { btn.classList.add('tab-active'); btn.scrollIntoView({ behavior: 'smooth', inline: 'center' }); }
             if(id === 'salario') mudarMesSubAba('jan', 'sal');
             if(id === 'devedores') mudarMesSubAba('jan', 'dev');
         };
@@ -192,7 +190,15 @@
             if(confirm("Excluir?")) remove(ref(dbFirebase, `pegas_v1/transacoes/${mes}/${tipo}/${id}`));
         };
 
-        function formatar(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+        // FUNÇÃO DE EDIÇÃO
+        window.editarItem = (mes, tipo, id, campoAtual, valorAtual) => {
+            let novoValor = prompt(`Editar ${campoAtual === 'desc' ? 'Descrição' : 'Valor'}:`, valorAtual);
+            if (novoValor !== null && novoValor !== "") {
+                const dadosUpdate = {};
+                dadosUpdate[campoAtual] = campoAtual === 'valor' ? parseFloat(novoValor) : novoValor;
+                update(ref(dbFirebase, `pegas_v1/transacoes/${mes}/${tipo}/${id}`), dadosUpdate);
+            }
+        };
 
         const renderTudo = () => {
             mesesIds.forEach(id => {
@@ -200,19 +206,22 @@
                     const cont = document.getElementById(`tabela-${tipo === 'gas' ? 'gas' : tipo}-${id}`);
                     const dados = localDB.transacoes?.[id]?.[tipo] || {};
                     cont.innerHTML = Object.values(dados).map(i => `
-                        <tr class="border-b"><td class="p-2 text-slate-700">${i.desc}</td><td class="p-2 text-right font-bold">R$ ${i.valor.toFixed(2)}</td>
-                        <td class="p-2 text-right"><button onclick="excluirItem('${id}','${tipo}','${i.id}')" class="text-red-500 font-bold px-2">✕</button></td></tr>
+                        <tr class="border-b">
+                            <td class="p-2 text-slate-700 editable-item" onclick="editarItem('${id}','${tipo}','${i.id}','desc','${i.desc}')">${i.desc}</td>
+                            <td class="p-2 text-right font-bold editable-item" onclick="editarItem('${id}','${tipo}','${i.id}','valor','${i.valor}')">R$ ${i.valor.toFixed(2)}</td>
+                            <td class="p-2 text-right"><button onclick="excluirItem('${id}','${tipo}','${i.id}')" class="text-red-500 font-bold px-2">✕</button></td>
+                        </tr>
                     `).join('');
                 });
                 
                 const rSal = Object.values(localDB.transacoes?.[id]?.sal || {}).reduce((s,i) => s+i.valor, 0);
                 const rGas = Object.values(localDB.transacoes?.[id]?.gas || {}).reduce((s,i) => s+i.valor, 0);
                 
-                document.getElementById(`res-sal-${id}`).innerText = formatar(rSal);
-                document.getElementById(`res-gas-${id}`).innerText = formatar(rGas);
+                document.getElementById(`res-sal-${id}`).innerText = rSal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                document.getElementById(`res-gas-${id}`).innerText = rGas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 const total = rSal - rGas;
                 const elTot = document.getElementById(`res-tot-${id}`);
-                elTot.innerText = formatar(total);
+                elTot.innerText = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 elTot.style.color = total >= 0 ? '#2563eb' : '#dc2626';
             });
         };
