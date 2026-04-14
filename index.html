@@ -95,25 +95,160 @@
         <div id="container-gastos-meses"></div>
     </div>
 
-    <script>
-        let db = JSON.parse(localStorage.getItem('pegas_db_v1')) || {
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // CONFIGURAÇÃO DO FIREBASE (Substitua pelos seus dados do console)
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            databaseURL: "https://SEU_PROJETO.firebaseio.com",
+            projectId: "SEU_PROJETO",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "ID",
+            appId: "ID_DO_APP"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const dbFirebase = getDatabase(app);
+        const dbRef = ref(dbFirebase, 'pegas_v1');
+
+        let localDB = {
             transacoes: mesesIds.reduce((acc, id) => {
-                acc[id] = { sal: [], dev: [], gas: [] };
+                acc[id] = { sal: {}, dev: {}, gas: {} }; // Firebase prefere objetos para ID fixo
                 return acc;
             }, {})
         };
 
         const despesasFixas = ["Cartão Nubank", "Cartão Will", "Cartão Bradesco", "Internet", "Alimentação", "Luz"];
 
-        function salvarDB() {
-            localStorage.setItem('pegas_db_v1', JSON.stringify(db));
+        // SINCRONIZAÇÃO EM TEMPO REAL
+        onValue(dbRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                localDB = data;
+                renderizarTudo();
+            }
+        });
+
+        // FUNÇÕES GLOBAIS (Expostas para o HTML)
+        window.scrollNav = (amount) => { document.getElementById('nav-principal').scrollLeft += amount; };
+        window.gerarPDF = () => { window.print(); };
+
+        window.adicionarItem = function(mesId, tipo) {
+            let pref = tipo === 'sal' ? '-sal-' : (tipo === 'dev' ? '-dev-' : '-');
+            const dInput = document.getElementById(`desc${pref}${mesId}`);
+            const vInput = document.getElementById(`valor${pref}${mesId}`);
+            const valor = parseFloat(vInput.value);
+
+            if(!dInput.value || isNaN(valor)) return;
+
+            const novoItemRef = push(ref(dbFirebase, `pegas_v1/transacoes/${mesId}/${tipo}`));
+            set(novoItemRef, {
+                desc: dInput.value,
+                valor: valor,
+                id: novoItemRef.key
+            });
+
+            dInput.value = ""; vInput.value = "";
+        };
+
+        window.excluirItem = function(mesId, tipo, itemId) {
+            if(!confirm("Excluir item?")) return;
+            remove(ref(dbFirebase, `pegas_v1/transacoes/${mesId}/${tipo}/${itemId}`));
+        };
+
+        window.editarItem = function(mesId, tipo, itemId) {
+            const item = localDB.transacoes[mesId][tipo][itemId];
+            const nD = prompt("Nova descrição:", item.desc);
+            const nV = prompt("Novo valor:", item.valor);
+            if (nD !== null && nV !== null) {
+                update(ref(dbFirebase, `pegas_v1/transacoes/${mesId}/${tipo}/${itemId}`), {
+                    desc: nD,
+                    valor: parseFloat(nV) || 0
+                });
+            }
+        };
+
+        window.mudarAba = function(idAlvo) {
+            document.querySelectorAll('.content-tab').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('tab-active'));
+            
+            const abaAlvo = document.getElementById('aba-' + idAlvo);
+            if(abaAlvo) abaAlvo.classList.add('active');
+            
+            const btn = document.getElementById('btn-' + idAlvo);
+            btn.classList.add('tab-active');
+            btn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+
+            if(idAlvo === 'salario') mudarMesSubAba('jan', 'sal');
+            if(idAlvo === 'devedores') mudarMesSubAba('jan', 'dev');
+        };
+
+        window.mudarMesSubAba = function(mesId, tipo) {
+            document.querySelectorAll(`.${tipo}-content`).forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll(`[id^="btn-${tipo}-"]`).forEach(btn => btn.classList.remove('sub-tab-active', 'sub-tab-dev-active'));
+            document.getElementById(`${tipo}-mes-${mesId}`).classList.remove('hidden');
+            document.getElementById(`btn-${tipo}-${mesId}`).classList.add(tipo === 'sal' ? 'sub-tab-active' : 'sub-tab-dev-active');
+        };
+
+        window.preencherFixa = function(mesId, nome) {
+            document.getElementById(`desc-${mesId}`).value = nome;
+            document.getElementById(`valor-${mesId}`).focus();
+        };
+
+        // RENDERIZAÇÃO
+        function formatar(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+        function renderizarTudo() {
+            mesesIds.forEach(id => {
+                renderizarLista(id, 'sal');
+                renderizarLista(id, 'dev');
+                renderizarLista(id, 'gas');
+            });
             renderizarResumoGeral();
         }
 
-        function scrollNav(amount) { document.getElementById('nav-principal').scrollLeft += amount; }
-        function gerarPDF() { window.print(); }
+        function renderizarLista(mesId, tipo) {
+            const container = document.getElementById(`tabela-${tipo === 'gas' ? 'gas' : tipo}-${mesId}`);
+            if(!container) return;
+            
+            const itens = localDB.transacoes[mesId]?.[tipo] || {};
+            const color = tipo === 'sal' ? 'text-green-600' : (tipo === 'gas' ? 'text-red-500' : 'text-orange-600');
+            
+            container.innerHTML = Object.values(itens).map(item => `
+                <tr class="border-b">
+                    <td class="p-3 text-slate-700">${item.desc}</td>
+                    <td class="p-3 text-right font-bold ${color}">${formatar(item.valor)}</td>
+                    <td class="p-3 text-right print-hidden flex justify-end gap-3">
+                        <span onclick="editarItem('${mesId}', '${tipo}', '${item.id}')" class="text-blue-500 font-bold cursor-pointer hover:scale-125 transition-all">✎</span>
+                        <span onclick="excluirItem('${mesId}', '${tipo}', '${item.id}')" class="text-red-500 font-bold cursor-pointer hover:scale-125 transition-all">✕</span>
+                    </td>
+                </tr>`).join('');
+        }
 
-        function inicializar() {
+        function renderizarResumoGeral() {
+            mesesIds.forEach(id => {
+                const rec = Object.values(localDB.transacoes[id]?.sal || {}).reduce((sum, i) => sum + i.valor, 0);
+                const gas = Object.values(localDB.transacoes[id]?.gas || {}).reduce((sum, i) => sum + i.valor, 0);
+                
+                const elSal = document.getElementById(`res-sal-${id}`);
+                const elGas = document.getElementById(`res-gas-${id}`);
+                const elTot = document.getElementById(`res-tot-${id}`);
+
+                if(elSal) elSal.innerText = formatar(rec);
+                if(elGas) elGas.innerText = formatar(gas);
+                if(elTot) {
+                    const saldo = rec - gas;
+                    elTot.innerText = formatar(saldo);
+                    elTot.style.color = saldo >= 0 ? '#2563eb' : '#dc2626';
+                }
+            });
+        }
+
+        // INICIALIZAÇÃO DA ESTRUTURA HTML
+        function criarEstrutura() {
             const corpoResumo = document.getElementById('corpo-resumo');
             const subNavSal = document.getElementById('sub-nav-salario');
             const subNavDev = document.getElementById('sub-nav-devedores');
@@ -122,140 +257,21 @@
             const contGas = document.getElementById('container-gastos-meses');
 
             mesesIds.forEach((id, i) => {
-                corpoResumo.innerHTML += `
-                    <tr>
-                        <td class="p-4 border-b font-bold text-slate-600">${mesesNomes[i]}</td>
-                        <td id="res-sal-${id}" class="p-4 border-b text-right font-mono text-green-600">R$ 0,00</td>
-                        <td id="res-gas-${id}" class="p-4 border-b text-right font-mono text-red-500">R$ 0,00</td>
-                        <td id="res-tot-${id}" class="p-4 border-b text-right font-mono font-bold bg-slate-50">R$ 0,00</td>
-                    </tr>`;
-
+                corpoResumo.innerHTML += `<tr><td class="p-4 border-b font-bold text-slate-600">${mesesNomes[i]}</td><td id="res-sal-${id}" class="p-4 border-b text-right font-mono text-green-600">R$ 0,00</td><td id="res-gas-${id}" class="p-4 border-b text-right font-mono text-red-500">R$ 0,00</td><td id="res-tot-${id}" class="p-4 border-b text-right font-mono font-bold bg-slate-50">R$ 0,00</td></tr>`;
+                
                 const btnHtml = (tipo) => `<button onclick="mudarMesSubAba('${id}', '${tipo}')" id="btn-${tipo}-${id}" class="px-3 py-1 border rounded-full text-[9px] font-bold uppercase whitespace-nowrap bg-white text-gray-500">${mesesNomes[i].substring(0,3)}</button>`;
                 subNavSal.innerHTML += btnHtml('sal');
                 subNavDev.innerHTML += btnHtml('dev');
 
-                contSal.innerHTML += `<div id="sal-mes-${id}" class="sal-content hidden">
-                    <h3 class="hidden print:block text-green-700 font-bold mb-4">RECEITAS: ${mesesNomes[i]}</h3>
-                    <div class="mb-4 p-4 bg-green-50 border rounded flex gap-2 print-hidden">
-                        <input type="text" id="desc-sal-${id}" placeholder="Fonte" class="flex-1 p-2 border rounded text-sm">
-                        <input type="number" id="valor-sal-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm">
-                        <button onclick="adicionarItem('${id}', 'sal')" class="bg-green-600 text-white px-4 rounded text-xs font-bold uppercase">OK</button>
-                    </div>
-                    <table class="w-full text-sm border"><tbody id="tabela-sal-${id}" class="bg-white"></tbody></table>
-                </div>`;
-
-                contDev.innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden">
-                    <h3 class="hidden print:block text-orange-700 font-bold mb-4">DEVEDORES: ${mesesNomes[i]}</h3>
-                    <div class="mb-4 p-4 bg-orange-50 border rounded flex gap-2 print-hidden">
-                        <input type="text" id="desc-dev-${id}" placeholder="Nome" class="flex-1 p-2 border rounded text-sm">
-                        <input type="number" id="valor-dev-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm">
-                        <button onclick="adicionarItem('${id}', 'dev')" class="bg-orange-600 text-white px-4 rounded text-xs font-bold uppercase">SALVAR</button>
-                    </div>
-                    <table class="w-full text-sm border"><tbody id="tabela-dev-${id}" class="bg-white"></tbody></table>
-                </div>`;
+                contSal.innerHTML += `<div id="sal-mes-${id}" class="sal-content hidden"><h3 class="hidden print:block text-green-700 font-bold mb-4">RECEITAS: ${mesesNomes[i]}</h3><div class="mb-4 p-4 bg-green-50 border rounded flex gap-2 print-hidden"><input type="text" id="desc-sal-${id}" placeholder="Fonte" class="flex-1 p-2 border rounded text-sm"><input type="number" id="valor-sal-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm"><button onclick="adicionarItem('${id}', 'sal')" class="bg-green-600 text-white px-4 rounded text-xs font-bold uppercase">OK</button></div><table class="w-full text-sm border"><tbody id="tabela-sal-${id}" class="bg-white"></tbody></table></div>`;
+                contDev.innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden"><h3 class="hidden print:block text-orange-700 font-bold mb-4">DEVEDORES: ${mesesNomes[i]}</h3><div class="mb-4 p-4 bg-orange-50 border rounded flex gap-2 print-hidden"><input type="text" id="desc-dev-${id}" placeholder="Nome" class="flex-1 p-2 border rounded text-sm"><input type="number" id="valor-dev-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm"><button onclick="adicionarItem('${id}', 'dev')" class="bg-orange-600 text-white px-4 rounded text-xs font-bold uppercase">SALVAR</button></div><table class="w-full text-sm border"><tbody id="tabela-dev-${id}" class="bg-white"></tbody></table></div>`;
 
                 let chipsHtml = despesasFixas.map(f => `<span class="fixa-chip mr-1 print-hidden" onclick="preencherFixa('${id}', '${f}')">${f}</span>`).join('');
-                contGas.innerHTML += `<div id="aba-${id}" class="p-6 content-tab">
-                    <h3 class="text-xl font-bold text-slate-700 mb-2 uppercase">Fluxo: ${mesesNomes[i]}</h3>
-                    <div class="flex flex-wrap gap-1 mb-4 print-hidden">${chipsHtml}</div>
-                    <div class="mb-4 p-4 bg-slate-50 border rounded flex gap-2 print-hidden">
-                        <input type="text" id="desc-${id}" placeholder="Descrição" class="flex-1 p-2 border rounded text-sm">
-                        <input type="number" id="valor-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm">
-                        <button onclick="adicionarItem('${id}', 'gas')" class="bg-blue-600 text-white px-4 rounded text-xs font-bold uppercase">OK</button>
-                    </div>
-                    <table class="w-full text-sm border"><tbody id="tabela-gas-${id}" class="bg-white"></tbody></table>
-                </div>`;
-            });
-            renderizarTudo();
-        }
-
-        function formatar(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-
-        function adicionarItem(mesId, tipo) {
-            let pref = tipo === 'sal' ? '-sal-' : (tipo === 'dev' ? '-dev-' : '-');
-            const d = document.getElementById(`desc${pref}${mesId}`), vInput = document.getElementById(`valor${pref}${mesId}`);
-            const v = parseFloat(vInput.value);
-            if(!d.value || isNaN(v)) return;
-            db.transacoes[mesId][tipo].push({ id: Date.now(), desc: d.value, valor: v });
-            d.value = ""; vInput.value = "";
-            salvarDB(); renderizarLista(mesId, tipo);
-        }
-
-        function renderizarLista(mesId, tipo) {
-            const container = document.getElementById(`tabela-${tipo === 'gas' ? 'gas' : tipo}-${mesId}`);
-            if(!container) return;
-            const color = tipo === 'sal' ? 'text-green-600' : (tipo === 'gas' ? 'text-red-500' : 'text-orange-600');
-            container.innerHTML = db.transacoes[mesId][tipo].map(item => `
-                <tr class="border-b">
-                    <td class="p-3 text-slate-700">${item.desc}</td>
-                    <td class="p-3 text-right font-bold ${color}">${formatar(item.valor)}</td>
-                    <td class="p-3 text-right print-hidden flex justify-end gap-3">
-                        <span onclick="editarItem('${mesId}', '${tipo}', ${item.id})" class="text-blue-500 font-bold cursor-pointer hover:scale-125 transition-all">✎</span>
-                        <span onclick="excluirItem('${mesId}', '${tipo}', ${item.id})" class="text-red-500 font-bold cursor-pointer hover:scale-125 transition-all">✕</span>
-                    </td>
-                </tr>`).join('');
-        }
-
-        function editarItem(mesId, tipo, itemId) {
-            const item = db.transacoes[mesId][tipo].find(i => i.id === itemId);
-            if (!item) return;
-            const nD = prompt("Nova descrição:", item.desc);
-            const nV = prompt("Novo valor:", item.valor);
-            if (nD !== null && nV !== null) {
-                item.desc = nD;
-                item.valor = parseFloat(nV) || 0;
-                salvarDB(); renderizarLista(mesId, tipo);
-            }
-        }
-
-        function excluirItem(mesId, tipo, itemId) {
-            if(!confirm("Excluir item?")) return;
-            db.transacoes[mesId][tipo] = db.transacoes[mesId][tipo].filter(i => i.id !== itemId);
-            salvarDB(); renderizarLista(mesId, tipo);
-        }
-
-        function renderizarResumoGeral() {
-            mesesIds.forEach(id => {
-                const rec = db.transacoes[id].sal.reduce((sum, i) => sum + i.valor, 0);
-                const gas = db.transacoes[id].gas.reduce((sum, i) => sum + i.valor, 0);
-                document.getElementById(`res-sal-${id}`).innerText = formatar(rec);
-                document.getElementById(`res-gas-${id}`).innerText = formatar(gas);
-                const saldo = rec - gas;
-                const el = document.getElementById(`res-tot-${id}`);
-                el.innerText = formatar(saldo);
-                el.style.color = saldo >= 0 ? '#2563eb' : '#dc2626';
+                contGas.innerHTML += `<div id="aba-${id}" class="p-6 content-tab"><h3 class="text-xl font-bold text-slate-700 mb-2 uppercase">Fluxo: ${mesesNomes[i]}</h3><div class="flex flex-wrap gap-1 mb-4 print-hidden">${chipsHtml}</div><div class="mb-4 p-4 bg-slate-50 border rounded flex gap-2 print-hidden"><input type="text" id="desc-${id}" placeholder="Descrição" class="flex-1 p-2 border rounded text-sm"><input type="number" id="valor-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm"><button onclick="adicionarItem('${id}', 'gas')" class="bg-blue-600 text-white px-4 rounded text-xs font-bold uppercase">OK</button></div><table class="w-full text-sm border"><tbody id="tabela-gas-${id}" class="bg-white"></tbody></table></div>`;
             });
         }
 
-        function renderizarTudo() {
-            mesesIds.forEach(id => { renderizarLista(id, 'sal'); renderizarLista(id, 'dev'); renderizarLista(id, 'gas'); });
-            renderizarResumoGeral();
-        }
-
-        function mudarAba(idAlvo) {
-            document.querySelectorAll('.content-tab').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('tab-active'));
-            document.getElementById('aba-' + idAlvo).classList.add('active');
-            const btn = document.getElementById('btn-' + idAlvo);
-            btn.classList.add('tab-active');
-            btn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-            if(idAlvo === 'salario') mudarMesSubAba('jan', 'sal');
-            if(idAlvo === 'devedores') mudarMesSubAba('jan', 'dev');
-        }
-
-        function mudarMesSubAba(mesId, tipo) {
-            document.querySelectorAll(`.${tipo}-content`).forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll(`[id^="btn-${tipo}-"]`).forEach(btn => btn.classList.remove('sub-tab-active', 'sub-tab-dev-active'));
-            document.getElementById(`${tipo}-mes-${mesId}`).classList.remove('hidden');
-            document.getElementById(`btn-${tipo}-${mesId}`).classList.add(tipo === 'sal' ? 'sub-tab-active' : 'sub-tab-dev-active');
-        }
-
-        function preencherFixa(mesId, nome) {
-            document.getElementById(`desc-${mesId}`).value = nome;
-            document.getElementById(`valor-${mesId}`).focus();
-        }
-
-        window.onload = inicializar;
+        criarEstrutura();
     </script>
 </body>
 </html>
