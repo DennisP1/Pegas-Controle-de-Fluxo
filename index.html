@@ -3,85 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pegas v1.1.1 - Controle de Fluxo</title>
+    <title>Pegas v1.4.1 - Fluxo Multi-Ano</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .tab-active { border-bottom: 3px solid #3b82f6 !important; color: #3b82f6 !important; font-weight: 800 !important; background-color: white !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .sub-tab-active { background-color: #f0fdf4 !important; color: #16a34a !important; border-color: #86efac !important; }
-        .sub-tab-dev-active { background-color: #fff7ed !important; color: #ea580c !important; border-color: #fdba74 !important; }
         .content-tab { display: none; }
         .content-tab.active { display: block !important; }
         
-        .modo-celular .max-w-6xl { max-width: 450px !important; margin: 0 auto; font-size: 14px; }
-        .modo-celular .nav-btn { padding: 10px 12px !important; font-size: 8px !important; }
+        .vence-hoje { background-color: #fee2e2 !important; border-left: 4px solid #ef4444 !important; }
+        .vence-perto { background-color: #fefce8 !important; border-left: 4px solid #eab308 !important; }
+        .atrasado { background-color: #fef2f2 !important; border-left: 4px solid #991b1b !important; }
+        .pago { opacity: 0.5; text-decoration: line-through; background-color: #f8fafc !important; border-left: 4px solid #cbd5e1 !important; }
 
-        .nav-wrapper { position: relative; display: flex; align-items: center; background: #f8fafc; }
-        .nav-scroll { scroll-behavior: smooth; }
-        .arrow-btn { background: #f8fafc; z-index: 60; padding: 0 12px; height: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; color: #64748b; font-size: 10px; }
-        .fixa-chip { padding: 4px 10px; background: #e2e8f0; border-radius: 12px; font-size: 10px; font-weight: bold; color: #475569; cursor: pointer; white-space: nowrap; margin-bottom: 5px; margin-right: 4px; display: inline-block; }
+        .admin-only { display: none !important; }
+        .is-admin .admin-only { display: flex !important; }
+        .is-admin .admin-only-inline { display: inline-block !important; }
+        .is-admin .editable:hover { background: #f1f5f9; cursor: pointer; border-radius: 4px; }
         
-        /* Efeito visual para indicar que é editável */
-        .editable-item:hover { background-color: #f1f5f9; cursor: pointer; border-radius: 4px; }
+        .modo-celular .max-w-6xl { max-width: 450px !important; margin: 0 auto; }
+        
+        .btn-check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 10px; }
+        .btn-check.is-pago { background: #22c55e; border-color: #22c55e; color: white; }
+        .btn-check.is-atrasado:not(.is-pago) { border-color: #ef4444; color: #ef4444; animation: blink 1s infinite; }
+
+        @keyframes blink { 50% { opacity: 0.5; } }
 
         @media print {
-            .nav-wrapper, .bg-slate-800, .fixa-chip, button, input, .print-hidden { display: none !important; }
-            .max-w-6xl { border: none; shadow: none; width: 100%; max-width: 100%; }
+            .print-hidden, .auth-area, .nav-wrapper, .bg-[#1e293b], button, input, select { display: none !important; }
+            .max-w-6xl { border: none !important; width: 100% !important; margin: 0 !important; }
+            .content-tab.active { display: block !important; }
         }
     </style>
 </head>
-<body id="body-app" class="bg-gray-100 p-2 md:p-8 transition-all duration-300">
+<body id="body-app" class="bg-gray-100 p-2 md:p-8">
 
     <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
         
-        <div class="bg-slate-800 p-4 md:p-6 text-white flex justify-between items-center print-hidden">
-            <div>
-                <h1 class="text-xl md:text-2xl font-bold italic uppercase tracking-widest">Pegas <span class="text-xs font-normal opacity-50">v1.1.1</span></h1>
-                <p class="text-slate-400 text-[10px] md:text-sm">Controle de Fluxo</p>
+        <div class="bg-[#1e293b] p-4 md:p-6 text-white flex flex-col md:flex-row justify-between items-center gap-4 print-hidden">
+            <div class="flex items-center gap-4">
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold italic uppercase tracking-widest text-blue-400">Pegas <span class="text-xs font-normal opacity-50 text-white">v1.4.1</span></h1>
+                    <select id="select-ano" onchange="trocarAno()" class="bg-slate-800 text-white text-xs font-bold p-1 rounded border border-slate-600 outline-none">
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                        <option value="2027" selected>2027</option>
+                        <option value="2028">2028</option>
+                        <option value="2029">2029</option>
+                        <option value="2030">2030</option>
+                    </select>
+                </div>
+                <div class="border-l border-slate-700 pl-4 text-center md:text-left">
+                    <div id="data-atual" class="text-[10px] text-blue-300 font-bold uppercase">--/--/----</div>
+                    <div id="relogio-digital" class="text-lg md:text-xl font-bold font-mono leading-none">00:00:00</div>
+                </div>
             </div>
-            <div class="flex gap-2">
-                <button onclick="alternarModo()" id="btn-modo" class="text-[9px] bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded border border-slate-500 font-bold uppercase">MODO CELULAR</button>
-                <button onclick="window.print()" class="text-[9px] bg-red-700 hover:bg-red-600 px-3 py-2 rounded border border-red-500 font-bold uppercase">PDF</button>
+            
+            <div class="flex items-center gap-2 auth-area">
+                <input type="password" id="input-senha" placeholder="SENHA" class="text-slate-900 text-xs p-2 rounded w-24 outline-none">
+                <button onclick="validarSenha()" class="bg-blue-600 px-3 py-2 rounded text-[10px] font-bold uppercase">OK</button>
+                <button onclick="alternarModo()" id="btn-modo" class="text-[9px] bg-slate-700 px-3 py-2 rounded border border-slate-500 font-bold uppercase">CELULAR</button>
             </div>
         </div>
 
-        <div class="nav-wrapper border-b sticky top-0 z-50 print-hidden">
-            <button onclick="scrollNav(-100)" class="arrow-btn">◀</button>
-            <nav id="nav-principal" class="nav-scroll flex overflow-x-auto no-scrollbar flex-1 bg-slate-50 font-bold">
-                <button onclick="mudarAba('resumo')" id="btn-resumo" class="nav-btn px-5 py-4 text-[10px] uppercase whitespace-nowrap tab-active">Resumo</button>
-                <button onclick="mudarAba('salario')" id="btn-salario" class="nav-btn px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-green-600">Receitas</button>
-                <button onclick="mudarAba('devedores')" id="btn-devedores" class="nav-btn px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-orange-600">Devedores</button>
+        <div class="nav-wrapper border-b sticky top-0 z-50 print-hidden flex items-center bg-white">
+            <nav id="nav-principal" class="flex overflow-x-auto no-scrollbar flex-1 font-bold">
+                <button onclick="mudarAba('resumo')" id="btn-resumo" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap tab-active">📊 Resumo</button>
+                <button onclick="mudarAba('salario')" id="btn-salario" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-blue-600">💰 Receitas</button>
+                <button onclick="mudarAba('devedores')" id="btn-devedores" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-orange-600">🤝 Devedores</button>
                 <div id="meses-nav-lista" class="flex"></div>
             </nav>
-            <button onclick="scrollNav(100)" class="arrow-btn">▶</button>
         </div>
 
         <div id="aba-resumo" class="p-4 md:p-6 content-tab active">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-[10px] md:text-xs">
-                    <thead>
-                        <tr class="bg-slate-100 uppercase font-bold text-slate-500">
-                            <th class="p-3 border-b">Mês</th>
-                            <th class="p-3 border-b text-right text-green-700">Receitas (+)</th>
-                            <th class="p-3 border-b text-right text-red-700">Gastos (-)</th>
-                            <th class="p-3 border-b text-right bg-slate-200 text-slate-800">Saldo</th>
-                        </tr>
-                    </thead>
-                    <tbody id="corpo-resumo"></tbody>
-                </table>
-            </div>
+            <div class="mb-8 p-4 bg-slate-50 rounded-xl border"><canvas id="graficoSaude" style="max-height: 250px;"></canvas></div>
+            <table class="w-full text-left text-[10px] md:text-xs mb-4">
+                <thead><tr class="bg-slate-100 uppercase text-slate-500 font-bold"><th class="p-3">Mês</th><th class="p-3 text-right">Receitas</th><th class="p-3 text-right">Gastos</th><th class="p-3 text-right bg-slate-200">Saldo</th></tr></thead>
+                <tbody id="corpo-resumo"></tbody>
+            </table>
+            <button onclick="window.print()" class="w-full py-3 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold uppercase print-hidden">Gerar PDF do Ano</button>
         </div>
 
         <div id="aba-salario" class="p-4 md:p-6 content-tab">
-            <h3 class="font-bold text-green-700 mb-4 uppercase text-sm">Receitas</h3>
-            <div class="flex overflow-x-auto gap-2 mb-6 no-scrollbar print-hidden" id="sub-nav-salario"></div>
+            <div class="flex overflow-x-auto gap-2 mb-6 no-scrollbar" id="sub-nav-salario"></div>
             <div id="container-salario-meses"></div>
         </div>
 
         <div id="aba-devedores" class="p-4 md:p-6 content-tab">
-            <h3 class="font-bold text-orange-700 mb-4 uppercase text-sm">Devedores</h3>
-            <div class="flex overflow-x-auto gap-2 mb-6 no-scrollbar print-hidden" id="sub-nav-devedores"></div>
+            <div class="flex overflow-x-auto gap-2 mb-6 no-scrollbar" id="sub-nav-devedores"></div>
             <div id="container-devedores-meses"></div>
         </div>
 
@@ -104,127 +115,184 @@
 
         const app = initializeApp(firebaseConfig);
         const dbFirebase = getDatabase(app);
-        const dbRef = ref(dbFirebase, 'pegas_v1');
+        
+        const SENHA_MESTRA = "DennisPegas"; 
+        let isAdmin = false;
+        let chartSaude = null;
+        let diaHoje = new Date().getDate();
+        let anoSelecionado = "2027";
+        let dbRef = ref(dbFirebase, `pegas_v1/${anoSelecionado}`);
 
         const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
         const mesesIds = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-        const despesasFixas = ["Cartão Nubank", "Cartão Will", "Cartão Bradesco", "Internet", "Alimentação", "Luz"];
-
         let localDB = { transacoes: {} };
 
-        window.alternarModo = () => {
-            const body = document.getElementById('body-app');
-            const btn = document.getElementById('btn-modo');
-            if(body.classList.contains('modo-celular')){
-                body.classList.remove('modo-celular');
-                btn.innerText = "MODO CELULAR";
-            } else {
-                body.classList.add('modo-celular');
-                btn.innerText = "MODO PC";
+        // RELÓGIO
+        setInterval(() => {
+            const agora = new Date();
+            document.getElementById('data-atual').innerText = agora.toLocaleDateString('pt-BR');
+            document.getElementById('relogio-digital').innerText = agora.toLocaleTimeString('pt-BR');
+            if(agora.getDate() !== diaHoje) { diaHoje = agora.getDate(); renderTudo(); }
+        }, 1000);
+
+        // ATUALIZA O TÍTULO DOS MESES DINAMICAMENTE
+        const atualizarTitulosAno = () => {
+            mesesIds.forEach((id, i) => {
+                const titulo = document.getElementById(`titulo-mes-${id}`);
+                if(titulo) titulo.innerText = `${mesesNomes[i].toUpperCase()} (${anoSelecionado})`;
+            });
+        };
+
+        window.trocarAno = () => {
+            anoSelecionado = document.getElementById('select-ano').value;
+            dbRef = ref(dbFirebase, `pegas_v1/${anoSelecionado}`);
+            atualizarTitulosAno(); // Muda o texto na hora
+            onValue(dbRef, (snap) => { localDB = snap.val() || { transacoes: {} }; renderTudo(); });
+        };
+
+        window.validarSenha = () => {
+            if(document.getElementById('input-senha').value === SENHA_MESTRA) {
+                isAdmin = true; document.getElementById('body-app').classList.add('is-admin');
+                alert("DennisPegas Online!");
             }
+        };
+
+        window.alternarModo = () => { document.getElementById('body-app').classList.toggle('modo-celular'); };
+
+        const getEmoji = (t) => {
+            const map = {"cartao":"💳", "mercado":"🛒", "luz":"⚡", "net":"🌐", "gas":"⛽", "aluguel":"🏠", "salario":"💰", "pix":"💸"};
+            for(let key in map) if(t.toLowerCase().includes(key)) return map[key] + " ";
+            return "📝 ";
         };
 
         const montarEstrutura = () => {
-            const mesesNav = document.getElementById('meses-nav-lista');
-            const corpoRes = document.getElementById('corpo-resumo');
-            const subSal = document.getElementById('sub-nav-salario');
-            const subDev = document.getElementById('sub-nav-devedores');
-            const contSal = document.getElementById('container-salario-meses');
-            const contDev = document.getElementById('container-devedores-meses');
-            const contGas = document.getElementById('container-gastos-meses');
+            const mNav = document.getElementById('meses-nav-lista');
+            const cRes = document.getElementById('corpo-resumo');
+            const sSal = document.getElementById('sub-nav-salario');
+            const sDev = document.getElementById('sub-nav-devedores');
+            const cGas = document.getElementById('container-gastos-meses');
 
             mesesIds.forEach((id, i) => {
-                mesesNav.innerHTML += `<button onclick="mudarAba('${id}')" id="btn-${id}" class="nav-btn px-5 py-4 text-[10px] uppercase border-l border-gray-200 whitespace-nowrap">${mesesNomes[i]}</button>`;
-                corpoRes.innerHTML += `<tr class="border-b"><td class="p-3 font-bold text-slate-600">${mesesNomes[i]}</td><td id="res-sal-${id}" class="p-3 text-right text-green-600 font-mono font-bold">R$ 0,00</td><td id="res-gas-${id}" class="p-3 text-right text-red-500 font-mono font-bold">R$ 0,00</td><td id="res-tot-${id}" class="p-3 text-right font-mono font-bold bg-slate-50">R$ 0,00</td></tr>`;
-                
-                subSal.innerHTML += `<button onclick="mudarMesSubAba('${id}', 'sal')" id="btn-sal-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold bg-white text-gray-500">${mesesNomes[i].substring(0,3)}</button>`;
-                subDev.innerHTML += `<button onclick="mudarMesSubAba('${id}', 'dev')" id="btn-dev-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold bg-white text-gray-500">${mesesNomes[i].substring(0,3)}</button>`;
+                mNav.innerHTML += `<button onclick="mudarAba('${id}')" id="btn-${id}" class="px-5 py-4 text-[10px] border-l whitespace-nowrap">${mesesNomes[i].substring(0,3)}</button>`;
+                cRes.innerHTML += `<tr class="border-b"><td class="p-3 font-bold text-slate-600">${mesesNomes[i]}</td><td id="res-sal-${id}" class="p-3 text-right text-green-600 font-bold">R$ 0,00</td><td id="res-gas-${id}" class="p-3 text-right text-red-500 font-bold">R$ 0,00</td><td id="res-tot-${id}" class="p-3 text-right font-bold bg-slate-50">R$ 0,00</td></tr>`;
+                sSal.innerHTML += `<button onclick="mudarSubMes('${id}', 'sal')" id="btn-sub-sal-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold">${mesesNomes[i].substring(0,3)}</button>`;
+                sDev.innerHTML += `<button onclick="mudarSubMes('${id}', 'dev')" id="btn-sub-dev-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold">${mesesNomes[i].substring(0,3)}</button>`;
 
-                contSal.innerHTML += `<div id="sal-mes-${id}" class="sal-content hidden"><div class="flex flex-col md:flex-row gap-2 mb-4 p-3 bg-green-50 rounded border"><input type="text" id="desc-sal-${id}" placeholder="Fonte" class="p-2 border rounded text-xs"><input type="number" id="valor-sal-${id}" placeholder="R$" class="p-2 border rounded text-xs"><button onclick="addItem('${id}', 'sal')" class="bg-green-600 text-white p-2 rounded text-xs font-bold uppercase">ADICIONAR</button></div><table class="w-full text-xs border"><tbody id="tabela-sal-${id}" class="bg-white"></tbody></table></div>`;
-                contDev.innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden"><div class="flex flex-col md:flex-row gap-2 mb-4 p-3 bg-orange-50 rounded border"><input type="text" id="desc-dev-${id}" placeholder="Nome" class="p-2 border rounded text-xs"><input type="number" id="valor-dev-${id}" placeholder="R$" class="p-2 border rounded text-xs"><button onclick="addItem('${id}', 'dev')" class="bg-orange-600 text-white p-2 rounded text-xs font-bold uppercase">ADICIONAR</button></div><table class="w-full text-xs border"><tbody id="tabela-dev-${id}" class="bg-white"></tbody></table></div>`;
+                document.getElementById('container-salario-meses').innerHTML += `<div id="sal-mes-${id}" class="sal-content hidden"><div class="admin-only flex gap-2 mb-4 p-3 bg-green-50 rounded border"><input type="text" id="desc-sal-${id}" placeholder="Fonte" class="p-2 border rounded text-xs flex-1"><input type="number" id="valor-sal-${id}" placeholder="R$" class="p-2 border rounded text-xs w-24"><button onclick="addItem('${id}', 'sal')" class="bg-green-600 text-white px-4 rounded text-xs font-bold uppercase">ADD</button></div><table class="w-full text-xs border bg-white"><tbody id="tabela-sal-${id}"></tbody></table></div>`;
+                document.getElementById('container-devedores-meses').innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden"><div class="admin-only flex gap-2 mb-4 p-3 bg-orange-50 rounded border"><input type="text" id="desc-dev-${id}" placeholder="Nome" class="p-2 border rounded text-xs flex-1"><input type="number" id="valor-dev-${id}" placeholder="R$" class="p-2 border rounded text-xs w-24"><button onclick="addItem('${id}', 'dev')" class="bg-orange-600 text-white px-4 rounded text-xs font-bold uppercase">ADD</button></div><table class="w-full text-xs border bg-white"><tbody id="tabela-dev-${id}"></tbody></table></div>`;
 
-                let chips = despesasFixas.map(f => `<span class="fixa-chip" onclick="window.preencherFixa('${id}', '${f}')">${f}</span>`).join('');
-                contGas.innerHTML += `<div id="aba-${id}" class="p-4 md:p-6 content-tab"><h3 class="text-sm font-bold text-slate-700 mb-2 uppercase">${mesesNomes[i]}</h3><div class="flex flex-wrap mb-4">${chips}</div><div class="flex flex-col md:flex-row gap-2 mb-4 p-3 bg-slate-50 border rounded"><input type="text" id="desc-${id}" placeholder="Gasto" class="p-2 border rounded text-xs flex-1"><input type="number" id="valor-${id}" placeholder="R$" class="p-2 border rounded text-xs md:w-24"><button onclick="addItem('${id}', 'gas')" class="bg-blue-600 text-white p-2 rounded text-xs font-bold uppercase">OK</button></div><table class="w-full text-[11px] md:text-xs border"><tbody id="tabela-gas-${id}" class="bg-white"></tbody></table></div>`;
+                cGas.innerHTML += `
+                <div id="aba-${id}" class="p-4 md:p-6 content-tab">
+                    <h3 id="titulo-mes-${id}" class="font-bold uppercase text-slate-700 mb-4">${mesesNomes[i]} (${anoSelecionado})</h3>
+                    <div class="admin-only flex flex-wrap gap-2 mb-4 p-3 bg-slate-50 border rounded">
+                        <input type="text" id="desc-gas-${id}" placeholder="Gasto" class="p-2 border rounded text-xs flex-1">
+                        <input type="number" id="venc-gas-${id}" placeholder="Dia" class="p-2 border rounded text-xs w-16">
+                        <input type="number" id="valor-gas-${id}" placeholder="R$" class="p-2 border rounded text-xs w-24">
+                        <button onclick="addItem('${id}', 'gas')" class="bg-blue-600 text-white px-4 rounded text-xs font-bold uppercase">OK</button>
+                    </div>
+                    <table class="w-full text-xs border bg-white mb-6">
+                        <thead class="bg-slate-50 text-[9px] text-slate-400"><tr><th class="p-2">Status</th><th class="p-2 text-left">Gasto</th><th class="p-2 text-center">Dia</th><th class="p-2 text-right">Valor</th><th class="p-2"></th></tr></thead>
+                        <tbody id="tabela-gas-${id}"></tbody>
+                    </table>
+                </div>`;
             });
         };
 
-        montarEstrutura();
-
-        onValue(dbRef, (snap) => {
-            localDB = snap.val() || { transacoes: {} };
-            renderTudo();
-        });
-
-        window.scrollNav = (a) => document.getElementById('nav-principal').scrollLeft += a;
-        window.preencherFixa = (mes, nome) => { document.getElementById('desc-'+mes).value = nome; document.getElementById('valor-'+mes).focus(); };
-
-        window.mudarAba = (id) => {
-            document.querySelectorAll('.content-tab').forEach(e => e.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('tab-active'));
-            const alvo = document.getElementById('aba-' + id);
-            if(alvo) alvo.classList.add('active');
-            const btn = document.getElementById('btn-' + id);
-            if(btn) { btn.classList.add('tab-active'); btn.scrollIntoView({ behavior: 'smooth', inline: 'center' }); }
-            if(id === 'salario') mudarMesSubAba('jan', 'sal');
-            if(id === 'devedores') mudarMesSubAba('jan', 'dev');
-        };
-
-        window.mudarMesSubAba = (id, tipo) => {
+        window.mudarSubMes = (id, tipo) => {
             document.querySelectorAll(`.${tipo}-content`).forEach(e => e.classList.add('hidden'));
-            document.querySelectorAll(`[id^="btn-${tipo}-"]`).forEach(b => b.classList.remove('sub-tab-active', 'sub-tab-dev-active'));
             document.getElementById(`${tipo}-mes-${id}`).classList.remove('hidden');
-            document.getElementById(`btn-${tipo}-${id}`).classList.add(tipo === 'sal' ? 'sub-tab-active' : 'sub-tab-dev-active');
         };
 
         window.addItem = (mes, tipo) => {
-            const p = tipo === 'sal' ? '-sal-' : (tipo === 'dev' ? '-dev-' : '-');
-            const d = document.getElementById(`desc${p}${mes}`);
-            const v = document.getElementById(`valor${p}${mes}`);
-            if(!d.value || !v.value) return;
-            const refItem = push(ref(dbFirebase, `pegas_v1/transacoes/${mes}/${tipo}`));
-            set(refItem, { id: refItem.key, desc: d.value, valor: parseFloat(v.value) });
-            d.value = ""; v.value = "";
+            if(!isAdmin) return alert("Desbloqueie primeiro");
+            const d = document.getElementById(`desc-${tipo}-${mes}`).value;
+            const v = document.getElementById(`valor-${tipo}-${mes}`).value;
+            const venc = document.getElementById(`venc-${tipo}-${mes}`)?.value || 0;
+            if(!d || !v) return;
+            const nr = push(ref(dbFirebase, `pegas_v1/${anoSelecionado}/transacoes/${mes}/${tipo}`));
+            set(nr, { id: nr.key, desc: d, valor: parseFloat(v), vencimento: parseInt(venc), pago: false });
+            document.getElementById(`desc-${tipo}-${mes}`).value = ""; document.getElementById(`valor-${tipo}-${mes}`).value = "";
         };
 
-        window.excluirItem = (mes, tipo, id) => {
-            if(confirm("Excluir?")) remove(ref(dbFirebase, `pegas_v1/transacoes/${mes}/${tipo}/${id}`));
-        };
-
-        // FUNÇÃO DE EDIÇÃO
-        window.editarItem = (mes, tipo, id, campoAtual, valorAtual) => {
-            let novoValor = prompt(`Editar ${campoAtual === 'desc' ? 'Descrição' : 'Valor'}:`, valorAtual);
-            if (novoValor !== null && novoValor !== "") {
-                const dadosUpdate = {};
-                dadosUpdate[campoAtual] = campoAtual === 'valor' ? parseFloat(novoValor) : novoValor;
-                update(ref(dbFirebase, `pegas_v1/transacoes/${mes}/${tipo}/${id}`), dadosUpdate);
+        window.editarItem = (mes, tipo, id, campo, valorAtual) => {
+            if(!isAdmin) return;
+            const novo = prompt(`Editar ${campo}:`, valorAtual);
+            if(novo !== null) {
+                const up = {}; up[campo] = (campo === 'valor' || campo === 'vencimento') ? parseFloat(novo) : novo;
+                update(ref(dbFirebase, `pegas_v1/${anoSelecionado}/transacoes/${mes}/${tipo}/${id}`), up);
             }
         };
 
-        const renderTudo = () => {
-            mesesIds.forEach(id => {
-                ['sal', 'dev', 'gas'].forEach(tipo => {
-                    const cont = document.getElementById(`tabela-${tipo === 'gas' ? 'gas' : tipo}-${id}`);
-                    const dados = localDB.transacoes?.[id]?.[tipo] || {};
-                    cont.innerHTML = Object.values(dados).map(i => `
-                        <tr class="border-b">
-                            <td class="p-2 text-slate-700 editable-item" onclick="editarItem('${id}','${tipo}','${i.id}','desc','${i.desc}')">${i.desc}</td>
-                            <td class="p-2 text-right font-bold editable-item" onclick="editarItem('${id}','${tipo}','${i.id}','valor','${i.valor}')">R$ ${i.valor.toFixed(2)}</td>
-                            <td class="p-2 text-right"><button onclick="excluirItem('${id}','${tipo}','${i.id}')" class="text-red-500 font-bold px-2">✕</button></td>
-                        </tr>
-                    `).join('');
-                });
-                
-                const rSal = Object.values(localDB.transacoes?.[id]?.sal || {}).reduce((s,i) => s+i.valor, 0);
-                const rGas = Object.values(localDB.transacoes?.[id]?.gas || {}).reduce((s,i) => s+i.valor, 0);
-                
-                document.getElementById(`res-sal-${id}`).innerText = rSal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                document.getElementById(`res-gas-${id}`).innerText = rGas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                const total = rSal - rGas;
-                const elTot = document.getElementById(`res-tot-${id}`);
-                elTot.innerText = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                elTot.style.color = total >= 0 ? '#2563eb' : '#dc2626';
-            });
+        window.togglePago = (mes, id, est) => { 
+            if(isAdmin) update(ref(dbFirebase, `pegas_v1/${anoSelecionado}/transacoes/${mes}/gas/${id}`), { pago: !est }); 
         };
+
+        window.excluirItem = (mes, t, id) => { 
+            if(isAdmin && confirm("Excluir?")) remove(ref(dbFirebase, `pegas_v1/${anoSelecionado}/transacoes/${mes}/${t}/${id}`)); 
+        };
+
+        const renderTudo = () => {
+            const lRec = []; const lGas = [];
+            mesesIds.forEach(id => {
+                let tSal = 0; let tGas = 0;
+                const dSal = localDB.transacoes?.[id]?.sal || {};
+                document.getElementById(`tabela-sal-${id}`).innerHTML = Object.values(dSal).map(i => {
+                    tSal += i.valor;
+                    return `<tr class="border-b"><td class="p-3 editable" onclick="editarItem('${id}','sal','${i.id}','desc','${i.desc}')">${getEmoji(i.desc)}${i.desc}</td><td class="p-3 text-right font-bold text-green-600 editable" onclick="editarItem('${id}','sal','${i.id}','valor','${i.valor}')">R$ ${i.valor.toFixed(2)}</td><td class="p-2 text-right"><button onclick="excluirItem('${id}','sal','${i.id}')" class="admin-only-inline text-red-400">✕</button></td></tr>`;
+                }).join('');
+
+                const dDev = localDB.transacoes?.[id]?.dev || {};
+                document.getElementById(`tabela-dev-${id}`).innerHTML = Object.values(dDev).map(i => `<tr class="border-b"><td class="p-3 editable" onclick="editarItem('${id}','dev','${i.id}','desc','${i.desc}')">${getEmoji(i.desc)}${i.desc}</td><td class="p-3 text-right font-bold text-orange-600 editable" onclick="editarItem('${id}','dev','${i.id}','valor','${i.valor}')">R$ ${i.valor.toFixed(2)}</td><td class="p-2 text-right"><button onclick="excluirItem('${id}','dev','${i.id}')" class="admin-only-inline text-red-400">✕</button></td></tr>`).join('');
+
+                const dGas = localDB.transacoes?.[id]?.gas || {};
+                document.getElementById(`tabela-gas-${id}`).innerHTML = Object.values(dGas).map(i => {
+                    tGas += i.valor;
+                    const dif = i.vencimento - diaHoje;
+                    let cls = ""; let btnCls = ""; let btnIcn = "";
+                    const ehAnoAtual = anoSelecionado == new Date().getFullYear();
+                    
+                    if(i.pago) { cls="pago"; btnCls="is-pago"; btnIcn="✓"; }
+                    else if(i.vencimento > 0 && ehAnoAtual) {
+                        if(i.vencimento === diaHoje) { cls="vence-hoje"; btnCls="is-atrasado"; btnIcn="!"; }
+                        else if(dif > 0 && dif <= 2) { cls="vence-perto"; }
+                        else if(dif < 0) { cls="atrasado"; btnCls="is-atrasado"; btnIcn="X"; }
+                    }
+                    return `<tr class="border-b ${cls}">
+                        <td class="p-2"><div onclick="togglePago('${id}','${i.id}',${i.pago})" class="btn-check ${btnCls}">${btnIcn}</div></td>
+                        <td class="p-3 editable" onclick="editarItem('${id}','gas','${i.id}','desc','${i.desc}')">${getEmoji(i.desc)}${i.desc}</td>
+                        <td class="p-3 text-center font-bold text-slate-400 editable" onclick="editarItem('${id}','gas','${i.id}','vencimento','${i.vencimento}')">${i.vencimento > 0 ? i.vencimento : '--'}</td>
+                        <td class="p-3 text-right font-bold editable" onclick="editarItem('${id}','gas','${i.id}','valor','${i.valor}')">R$ ${i.valor.toFixed(2)}</td>
+                        <td class="p-2 text-right"><button onclick="excluirItem('${id}','gas','${i.id}')" class="admin-only-inline text-red-400">✕</button></td>
+                    </tr>`;
+                }).join('');
+
+                lRec.push(tSal); lGas.push(tGas);
+                document.getElementById(`res-sal-${id}`).innerText = "R$ " + tSal.toFixed(2);
+                document.getElementById(`res-gas-${id}`).innerText = "R$ " + tGas.toFixed(2);
+                const saldo = tSal - tGas;
+                const elTot = document.getElementById(`res-tot-${id}`);
+                elTot.innerText = "R$ " + saldo.toFixed(2);
+                elTot.style.color = saldo >= 0 ? '#2563eb' : '#dc2626';
+            });
+            chartSaude.data.datasets[0].data = lRec; chartSaude.data.datasets[1].data = lGas; chartSaude.update();
+        };
+
+        window.mudarAba = (id) => {
+            document.querySelectorAll('.content-tab').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
+            document.getElementById('aba-'+id).classList.add('active');
+            document.getElementById('btn-'+id).classList.add('tab-active');
+            if(id==='salario') mudarSubMes('jan','sal'); if(id==='devedores') mudarSubMes('jan','dev');
+        };
+
+        const initChart = () => {
+            const ctx = document.getElementById('graficoSaude').getContext('2d');
+            chartSaude = new Chart(ctx, { type: 'bar', data: { labels: mesesNomes.map(m => m.substring(0,3)), datasets: [{label:'Receitas', data:[], backgroundColor:'#22c55e'}, {label:'Gastos', data:[], backgroundColor:'#ef4444'}] }, options: { responsive: true, maintainAspectRatio: false } });
+        };
+
+        montarEstrutura(); initChart();
+        onValue(dbRef, (snap) => { localDB = snap.val() || { transacoes: {} }; renderTudo(); });
+
     </script>
 </body>
 </html>
