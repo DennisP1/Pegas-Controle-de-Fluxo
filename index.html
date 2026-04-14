@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pegas v1.5.1 - Calendário Corrigido</title>
+    <title>Pegas v1.2.0 - Controle de Fluxo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -29,7 +29,6 @@
         .btn-check.is-pago { background: #22c55e; border-color: #22c55e; color: white; }
         .btn-check.is-atrasado:not(.is-pago) { border-color: #ef4444; color: #ef4444; animation: blink 1s infinite; }
 
-        /* Estilos Calendário Corrigidos */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; }
         .calendar-day { background: white; min-height: 95px; padding: 4px; font-size: 10px; transition: background 0.2s; position: relative; }
         .calendar-day.empty { background: #f9fafb; }
@@ -37,10 +36,6 @@
         .event-item { padding: 2px 4px; margin-top: 2px; border-radius: 3px; font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .event-pago { background: #dcfce7; color: #166534; text-decoration: line-through; border-left: 2px solid #22c55e; }
         .event-pendente { background: #fee2e2; color: #991b1b; border-left: 2px solid #ef4444; }
-
-        /* Estilos Wrapped */
-        #modal-wrapped { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 100; align-items: center; justify-content: center; color: white; padding: 20px; }
-        .wrapped-card { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 24px; max-width: 450px; width: 100%; border: 1px solid #3b82f6; box-shadow: 0 0 50px rgba(59, 130, 246, 0.3); }
 
         @keyframes blink { 50% { opacity: 0.5; } }
 
@@ -58,13 +53,9 @@
         <div class="bg-[#1e293b] p-4 md:p-6 text-white flex flex-col md:flex-row justify-between items-center gap-4 print-hidden">
             <div class="flex items-center gap-4">
                 <div>
-                    <h1 class="text-xl md:text-2xl font-bold italic uppercase tracking-widest text-blue-400">Pegas <span class="text-xs font-normal opacity-50 text-white">v1.5.1</span></h1>
+                    <h1 class="text-xl md:text-2xl font-bold italic uppercase tracking-widest text-blue-400">Pegas <span class="text-xs font-normal opacity-50 text-white">v1.2.0</span></h1>
                     <select id="select-ano" onchange="trocarAno()" class="bg-slate-800 text-white text-xs font-bold p-1 rounded border border-slate-600 outline-none">
-                        <option value="2025">2025</option>
-                        <option value="2026">2026</option>
-                        <option value="2027" selected>2027</option>
-                        <option value="2028">2028</option>
-                    </select>
+                        </select>
                 </div>
                 <div class="border-l border-slate-700 pl-4 text-center md:text-left">
                     <div id="data-atual" class="text-[10px] text-blue-300 font-bold uppercase">--/--/----</div>
@@ -82,11 +73,11 @@
         <div class="nav-wrapper border-b sticky top-0 z-50 print-hidden flex items-center bg-white">
             <nav id="nav-principal" class="flex overflow-x-auto no-scrollbar flex-1 font-bold">
                 <button onclick="mudarAba('resumo')" id="btn-resumo" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap tab-active">📊 Resumo</button>
-                <button onclick="mudarAba('calendario')" id="btn-calendario" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-purple-600">📅 Calendário</button>
                 <button onclick="mudarAba('salario')" id="btn-salario" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-blue-600">💰 Receitas</button>
                 <button onclick="mudarAba('devedores')" id="btn-devedores" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-orange-600">🤝 Devedores</button>
                 <div id="meses-nav-lista" class="flex"></div>
-                <button onclick="gerarWrapped()" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-yellow-500 font-black animate-pulse">✨ Wrapped</button>
+                <button onclick="mudarAba('notas')" id="btn-notas" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-emerald-600">📝 Notas</button>
+                <button onclick="mudarAba('calendario')" id="btn-calendario" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-purple-600">📅 Calendário</button>
             </nav>
         </div>
 
@@ -122,33 +113,16 @@
             <div id="container-devedores-meses"></div>
         </div>
 
-        <div id="container-gastos-meses"></div>
-    </div>
-
-    <div id="modal-wrapped" onclick="this.style.display='none'">
-        <div class="wrapped-card text-center" onclick="event.stopPropagation()">
-            <h2 class="text-blue-400 font-black text-3xl mb-8 italic uppercase tracking-tighter">Pegas Wrapped <span id="w-ano">---</span></h2>
-            <div class="space-y-8">
-                <div>
-                    <p class="text-slate-400 text-xs uppercase tracking-widest mb-2">Total Transacionado</p>
-                    <p id="w-total" class="text-4xl font-bold text-white">R$ 0,00</p>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
-                        <p class="text-slate-400 text-[10px] uppercase mb-1">Mês Econômico</p>
-                        <p id="w-economico" class="text-lg font-bold text-green-400">---</p>
-                    </div>
-                    <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
-                        <p class="text-slate-400 text-[10px] uppercase mb-1">Pontualidade</p>
-                        <p id="w-pontualidade" class="text-lg font-bold text-blue-400">0%</p>
-                    </div>
-                </div>
-                <div class="p-6 bg-blue-600/10 rounded-2xl border border-blue-500/30">
-                    <p id="w-insight" class="text-sm italic text-blue-100">"Analisando seus dados..."</p>
-                </div>
+        <div id="aba-notas" class="p-4 md:p-6 content-tab">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold uppercase text-slate-700 tracking-tighter text-emerald-600">Bloco de Notas</h3>
+                <select id="nota-mes-select" onchange="mudarNotaMes()" class="p-2 text-xs border rounded bg-slate-50 font-bold uppercase"></select>
             </div>
-            <button onclick="document.getElementById('modal-wrapped').style.display='none'" class="mt-10 text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-white transition-colors">Fechar Relatório</button>
+            <textarea id="texto-notas" oninput="salvarNotas()" class="w-full h-96 p-4 border rounded-xl text-sm shadow-inner outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Digite suas anotações para este mês aqui..."></textarea>
+            <div id="status-nota" class="text-[9px] text-slate-400 mt-2 uppercase font-bold">Aguardando alteração...</div>
         </div>
+
+        <div id="container-gastos-meses"></div>
     </div>
 
     <script type="module">
@@ -173,12 +147,18 @@
         let chartSaude = null;
         let diaHoje = new Date().getDate();
         let mesAtualIndex = new Date().getMonth();
-        let anoSelecionado = "2027";
+        let anoSelecionado = "2026";
         let dbRef = ref(dbFirebase, `pegas_v1/${anoSelecionado}`);
 
         const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
         const mesesIds = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-        let localDB = { transacoes: {} };
+        let localDB = { transacoes: {}, notas: {} };
+
+        // Gerar seletor de anos até 2040
+        const selAno = document.getElementById('select-ano');
+        for(let a = 2025; a <= 2040; a++) {
+            selAno.innerHTML += `<option value="${a}" ${a == 2026 ? 'selected' : ''}>${a}</option>`;
+        }
 
         setInterval(() => {
             const agora = new Date();
@@ -189,7 +169,7 @@
         window.trocarAno = () => {
             anoSelecionado = document.getElementById('select-ano').value;
             dbRef = ref(dbFirebase, `pegas_v1/${anoSelecionado}`);
-            onValue(dbRef, (snap) => { localDB = snap.val() || { transacoes: {} }; renderTudo(); });
+            onValue(dbRef, (snap) => { localDB = snap.val() || { transacoes: {}, notas: {} }; renderTudo(); });
         };
 
         window.validarSenha = () => {
@@ -208,7 +188,6 @@
             return "📝 ";
         };
 
-        // MONTAGEM DA ESTRUTURA
         const montarEstrutura = () => {
             const mNav = document.getElementById('meses-nav-lista');
             const cRes = document.getElementById('corpo-resumo');
@@ -216,9 +195,12 @@
             const sDev = document.getElementById('sub-nav-devedores');
             const cGas = document.getElementById('container-gastos-meses');
             const selCal = document.getElementById('cal-mes-select');
+            const selNot = document.getElementById('nota-mes-select');
 
             mesesIds.forEach((id, i) => {
                 selCal.innerHTML += `<option value="${id}" ${i === mesAtualIndex ? 'selected' : ''}>${mesesNomes[i]}</option>`;
+                selNot.innerHTML += `<option value="${id}" ${i === mesAtualIndex ? 'selected' : ''}>${mesesNomes[i]}</option>`;
+                
                 mNav.innerHTML += `<button onclick="mudarAba('${id}')" id="btn-${id}" class="px-5 py-4 text-[10px] border-l whitespace-nowrap">${mesesNomes[i].substring(0,3)}</button>`;
                 cRes.innerHTML += `<tr class="border-b"><td class="p-3 font-bold text-slate-600">${mesesNomes[i]}</td><td id="res-sal-${id}" class="p-3 text-right text-green-600 font-bold">R$ 0,00</td><td id="res-gas-${id}" class="p-3 text-right text-red-500 font-bold">R$ 0,00</td><td id="res-tot-${id}" class="p-3 text-right font-bold bg-slate-50">R$ 0,00</td></tr>`;
                 sSal.innerHTML += `<button onclick="mudarSubMes('${id}', 'sal')" id="btn-sub-sal-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold">${mesesNomes[i].substring(0,3)}</button>`;
@@ -229,7 +211,7 @@
 
                 cGas.innerHTML += `
                 <div id="aba-${id}" class="p-4 md:p-6 content-tab">
-                    <h3 id="titulo-mes-${id}" class="font-bold uppercase text-slate-700 mb-4">${mesesNomes[i]} (${anoSelecionado})</h3>
+                    <h3 id="titulo-mes-${id}" class="font-bold uppercase text-slate-700 mb-4">${mesesNomes[i]}</h3>
                     <div class="admin-only flex flex-wrap gap-2 mb-4 p-3 bg-slate-50 border rounded">
                         <input type="text" id="desc-gas-${id}" placeholder="Gasto" class="p-2 border rounded text-xs flex-1">
                         <input type="number" id="venc-gas-${id}" placeholder="Dia" class="p-2 border rounded text-xs w-16">
@@ -250,11 +232,34 @@
             if(document.getElementById('aba-'+id)) document.getElementById('aba-'+id).classList.add('active');
             document.getElementById('btn-'+id).classList.add('tab-active');
             if(id === 'calendario') renderCalendario();
+            if(id === 'notas') mudarNotaMes();
         };
 
         window.mudarSubMes = (id, tipo) => {
             document.querySelectorAll(`.${tipo}-content`).forEach(e => e.classList.add('hidden'));
             document.getElementById(`${tipo}-mes-${id}`).classList.remove('hidden');
+        };
+
+        // LÓGICA DE NOTAS
+        let timeoutNota;
+        window.mudarNotaMes = () => {
+            const mesId = document.getElementById('nota-mes-select').value;
+            const campo = document.getElementById('texto-notas');
+            campo.value = localDB.notas?.[mesId] || "";
+            document.getElementById('status-nota').innerText = "Editando " + mesId;
+        };
+
+        window.salvarNotas = () => {
+            if(!isAdmin) return;
+            const mesId = document.getElementById('nota-mes-select').value;
+            const texto = document.getElementById('texto-notas').value;
+            document.getElementById('status-nota').innerText = "Digitando...";
+            
+            clearTimeout(timeoutNota);
+            timeoutNota = setTimeout(() => {
+                update(ref(dbFirebase, `pegas_v1/${anoSelecionado}/notas`), { [mesId]: texto })
+                .then(() => { document.getElementById('status-nota').innerText = "Salvo com sucesso!"; });
+            }, 1000);
         };
 
         window.addItem = (mes, tipo) => {
@@ -326,7 +331,6 @@
             renderCalendario();
         };
 
-        // CALENDÁRIO COM LÓGICA DE DIAS DA SEMANA CORRIGIDA
         window.renderCalendario = () => {
             const mesId = document.getElementById('cal-mes-select').value;
             const container = document.getElementById('calendar-body');
@@ -335,18 +339,13 @@
             
             const mesIndex = mesesIds.indexOf(mesId);
             const ano = parseInt(anoSelecionado);
-            
-            // Descobrir em qual dia da semana começa o mês (0=Dom, 1=Seg...)
             const primeiroDiaDaSemana = new Date(ano, mesIndex, 1).getDay();
-            // Descobrir quantos dias tem o mês
             const diasNoMes = new Date(ano, mesIndex + 1, 0).getDate();
             
-            // 1. Preencher espaços vazios do início (Dias do mês anterior)
             for (let x = 0; x < primeiroDiaDaSemana; x++) {
                 container.innerHTML += `<div class="calendar-day empty border border-slate-50"></div>`;
             }
             
-            // 2. Preencher os dias do mês
             const gastos = localDB.transacoes?.[mesId]?.gas || {};
             for (let dia = 1; dia <= diasNoMes; dia++) {
                 const itensDia = Object.values(gastos).filter(g => g.vencimento == dia);
@@ -367,24 +366,6 @@
             }
         };
 
-        window.gerarWrapped = () => {
-            let total = 0; let mesEcon = ""; let menorGasto = Infinity;
-            let contas = 0; let pagas = 0;
-            mesesIds.forEach((id, i) => {
-                const sal = Object.values(localDB.transacoes?.[id]?.sal || {}).reduce((a,b)=>a+b.valor,0);
-                const gasArr = Object.values(localDB.transacoes?.[id]?.gas || {});
-                const gasSoma = gasArr.reduce((a,b)=>a+b.valor,0);
-                total += (sal + gasSoma);
-                if(gasSoma > 0 && gasSoma < menorGasto) { menorGasto = gasSoma; mesEcon = mesesNomes[i]; }
-                gasArr.forEach(g => { contas++; if(g.pago) pagas++; });
-            });
-            document.getElementById('w-ano').innerText = anoSelecionado;
-            document.getElementById('w-total').innerText = "R$ " + total.toLocaleString('pt-BR');
-            document.getElementById('w-economico').innerText = mesEcon || "---";
-            document.getElementById('w-pontualidade').innerText = contas > 0 ? Math.round((pagas/contas)*100)+"%" : "0%";
-            document.getElementById('modal-wrapped').style.display = 'flex';
-        };
-
         const initChart = () => {
             const ctx = document.getElementById('graficoSaude').getContext('2d');
             chartSaude = new Chart(ctx, { type: 'bar', data: { labels: mesesNomes.map(m => m.substring(0,3)), datasets: [{label:'Receitas', data:[], backgroundColor:'#22c55e'}, {label:'Gastos', data:[], backgroundColor:'#ef4444'}] }, options: { responsive: true, maintainAspectRatio: false } });
@@ -392,7 +373,7 @@
 
         montarEstrutura(); 
         initChart();
-        onValue(dbRef, (snap) => { localDB = snap.val() || { transacoes: {} }; renderTudo(); });
+        onValue(dbRef, (snap) => { localDB = snap.val() || { transacoes: {}, notas: {} }; renderTudo(); });
     </script>
 </body>
 </html>
