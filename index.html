@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pegas v1.4.1 - Fluxo Multi-Ano</title>
+    <title>Pegas v1.5.1 - Calendário Corrigido</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -29,6 +29,19 @@
         .btn-check.is-pago { background: #22c55e; border-color: #22c55e; color: white; }
         .btn-check.is-atrasado:not(.is-pago) { border-color: #ef4444; color: #ef4444; animation: blink 1s infinite; }
 
+        /* Estilos Calendário Corrigidos */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; }
+        .calendar-day { background: white; min-height: 95px; padding: 4px; font-size: 10px; transition: background 0.2s; position: relative; }
+        .calendar-day.empty { background: #f9fafb; }
+        .calendar-day-header { font-weight: bold; color: #64748b; text-align: center; padding: 8px; background: #f1f5f9; font-size: 9px; }
+        .event-item { padding: 2px 4px; margin-top: 2px; border-radius: 3px; font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .event-pago { background: #dcfce7; color: #166534; text-decoration: line-through; border-left: 2px solid #22c55e; }
+        .event-pendente { background: #fee2e2; color: #991b1b; border-left: 2px solid #ef4444; }
+
+        /* Estilos Wrapped */
+        #modal-wrapped { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 100; align-items: center; justify-content: center; color: white; padding: 20px; }
+        .wrapped-card { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 24px; max-width: 450px; width: 100%; border: 1px solid #3b82f6; box-shadow: 0 0 50px rgba(59, 130, 246, 0.3); }
+
         @keyframes blink { 50% { opacity: 0.5; } }
 
         @media print {
@@ -45,14 +58,12 @@
         <div class="bg-[#1e293b] p-4 md:p-6 text-white flex flex-col md:flex-row justify-between items-center gap-4 print-hidden">
             <div class="flex items-center gap-4">
                 <div>
-                    <h1 class="text-xl md:text-2xl font-bold italic uppercase tracking-widest text-blue-400">Pegas <span class="text-xs font-normal opacity-50 text-white">v1.4.1</span></h1>
+                    <h1 class="text-xl md:text-2xl font-bold italic uppercase tracking-widest text-blue-400">Pegas <span class="text-xs font-normal opacity-50 text-white">v1.5.1</span></h1>
                     <select id="select-ano" onchange="trocarAno()" class="bg-slate-800 text-white text-xs font-bold p-1 rounded border border-slate-600 outline-none">
                         <option value="2025">2025</option>
                         <option value="2026">2026</option>
                         <option value="2027" selected>2027</option>
                         <option value="2028">2028</option>
-                        <option value="2029">2029</option>
-                        <option value="2030">2030</option>
                     </select>
                 </div>
                 <div class="border-l border-slate-700 pl-4 text-center md:text-left">
@@ -71,9 +82,11 @@
         <div class="nav-wrapper border-b sticky top-0 z-50 print-hidden flex items-center bg-white">
             <nav id="nav-principal" class="flex overflow-x-auto no-scrollbar flex-1 font-bold">
                 <button onclick="mudarAba('resumo')" id="btn-resumo" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap tab-active">📊 Resumo</button>
+                <button onclick="mudarAba('calendario')" id="btn-calendario" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-purple-600">📅 Calendário</button>
                 <button onclick="mudarAba('salario')" id="btn-salario" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-blue-600">💰 Receitas</button>
                 <button onclick="mudarAba('devedores')" id="btn-devedores" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-orange-600">🤝 Devedores</button>
                 <div id="meses-nav-lista" class="flex"></div>
+                <button onclick="gerarWrapped()" class="px-5 py-4 text-[10px] uppercase whitespace-nowrap border-l text-yellow-500 font-black animate-pulse">✨ Wrapped</button>
             </nav>
         </div>
 
@@ -84,6 +97,19 @@
                 <tbody id="corpo-resumo"></tbody>
             </table>
             <button onclick="window.print()" class="w-full py-3 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold uppercase print-hidden">Gerar PDF do Ano</button>
+        </div>
+
+        <div id="aba-calendario" class="p-4 md:p-6 content-tab">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-bold uppercase text-slate-700 tracking-tighter">Calendário Financeiro</h3>
+                <select id="cal-mes-select" onchange="renderCalendario()" class="p-2 text-xs border rounded bg-slate-50 font-bold uppercase"></select>
+            </div>
+            <div class="calendar-grid">
+                <div class="calendar-day-header">DOM</div><div class="calendar-day-header">SEG</div><div class="calendar-day-header">TER</div>
+                <div class="calendar-day-header">QUA</div><div class="calendar-day-header">QUI</div><div class="calendar-day-header">SEX</div>
+                <div class="calendar-day-header">SÁB</div>
+            </div>
+            <div id="calendar-body" class="calendar-grid"></div>
         </div>
 
         <div id="aba-salario" class="p-4 md:p-6 content-tab">
@@ -97,6 +123,32 @@
         </div>
 
         <div id="container-gastos-meses"></div>
+    </div>
+
+    <div id="modal-wrapped" onclick="this.style.display='none'">
+        <div class="wrapped-card text-center" onclick="event.stopPropagation()">
+            <h2 class="text-blue-400 font-black text-3xl mb-8 italic uppercase tracking-tighter">Pegas Wrapped <span id="w-ano">---</span></h2>
+            <div class="space-y-8">
+                <div>
+                    <p class="text-slate-400 text-xs uppercase tracking-widest mb-2">Total Transacionado</p>
+                    <p id="w-total" class="text-4xl font-bold text-white">R$ 0,00</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
+                        <p class="text-slate-400 text-[10px] uppercase mb-1">Mês Econômico</p>
+                        <p id="w-economico" class="text-lg font-bold text-green-400">---</p>
+                    </div>
+                    <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700">
+                        <p class="text-slate-400 text-[10px] uppercase mb-1">Pontualidade</p>
+                        <p id="w-pontualidade" class="text-lg font-bold text-blue-400">0%</p>
+                    </div>
+                </div>
+                <div class="p-6 bg-blue-600/10 rounded-2xl border border-blue-500/30">
+                    <p id="w-insight" class="text-sm italic text-blue-100">"Analisando seus dados..."</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('modal-wrapped').style.display='none'" class="mt-10 text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-white transition-colors">Fechar Relatório</button>
+        </div>
     </div>
 
     <script type="module">
@@ -120,6 +172,7 @@
         let isAdmin = false;
         let chartSaude = null;
         let diaHoje = new Date().getDate();
+        let mesAtualIndex = new Date().getMonth();
         let anoSelecionado = "2027";
         let dbRef = ref(dbFirebase, `pegas_v1/${anoSelecionado}`);
 
@@ -127,59 +180,52 @@
         const mesesIds = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
         let localDB = { transacoes: {} };
 
-        // RELÓGIO
         setInterval(() => {
             const agora = new Date();
             document.getElementById('data-atual').innerText = agora.toLocaleDateString('pt-BR');
             document.getElementById('relogio-digital').innerText = agora.toLocaleTimeString('pt-BR');
-            if(agora.getDate() !== diaHoje) { diaHoje = agora.getDate(); renderTudo(); }
         }, 1000);
-
-        // ATUALIZA O TÍTULO DOS MESES DINAMICAMENTE
-        const atualizarTitulosAno = () => {
-            mesesIds.forEach((id, i) => {
-                const titulo = document.getElementById(`titulo-mes-${id}`);
-                if(titulo) titulo.innerText = `${mesesNomes[i].toUpperCase()} (${anoSelecionado})`;
-            });
-        };
 
         window.trocarAno = () => {
             anoSelecionado = document.getElementById('select-ano').value;
             dbRef = ref(dbFirebase, `pegas_v1/${anoSelecionado}`);
-            atualizarTitulosAno(); // Muda o texto na hora
             onValue(dbRef, (snap) => { localDB = snap.val() || { transacoes: {} }; renderTudo(); });
         };
 
         window.validarSenha = () => {
             if(document.getElementById('input-senha').value === SENHA_MESTRA) {
-                isAdmin = true; document.getElementById('body-app').classList.add('is-admin');
-                alert("DennisPegas Online!");
+                isAdmin = true; 
+                document.getElementById('body-app').classList.add('is-admin');
+                alert("Acesso Administrativo Liberado!");
             }
         };
 
-        window.alternarModo = () => { document.getElementById('body-app').classList.toggle('modo-celular'); };
+        window.alternarModo = () => document.getElementById('body-app').classList.toggle('modo-celular');
 
         const getEmoji = (t) => {
-            const map = {"cartao":"💳", "mercado":"🛒", "luz":"⚡", "net":"🌐", "gas":"⛽", "aluguel":"🏠", "salario":"💰", "pix":"💸"};
+            const map = {"cartao":"💳", "mercado":"🛒", "luz":"⚡", "net":"🌐", "gas":"⛽", "aluguel":"🏠", "salario":"💰", "pix":"💸", "carro":"🚗"};
             for(let key in map) if(t.toLowerCase().includes(key)) return map[key] + " ";
             return "📝 ";
         };
 
+        // MONTAGEM DA ESTRUTURA
         const montarEstrutura = () => {
             const mNav = document.getElementById('meses-nav-lista');
             const cRes = document.getElementById('corpo-resumo');
             const sSal = document.getElementById('sub-nav-salario');
             const sDev = document.getElementById('sub-nav-devedores');
             const cGas = document.getElementById('container-gastos-meses');
+            const selCal = document.getElementById('cal-mes-select');
 
             mesesIds.forEach((id, i) => {
+                selCal.innerHTML += `<option value="${id}" ${i === mesAtualIndex ? 'selected' : ''}>${mesesNomes[i]}</option>`;
                 mNav.innerHTML += `<button onclick="mudarAba('${id}')" id="btn-${id}" class="px-5 py-4 text-[10px] border-l whitespace-nowrap">${mesesNomes[i].substring(0,3)}</button>`;
                 cRes.innerHTML += `<tr class="border-b"><td class="p-3 font-bold text-slate-600">${mesesNomes[i]}</td><td id="res-sal-${id}" class="p-3 text-right text-green-600 font-bold">R$ 0,00</td><td id="res-gas-${id}" class="p-3 text-right text-red-500 font-bold">R$ 0,00</td><td id="res-tot-${id}" class="p-3 text-right font-bold bg-slate-50">R$ 0,00</td></tr>`;
                 sSal.innerHTML += `<button onclick="mudarSubMes('${id}', 'sal')" id="btn-sub-sal-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold">${mesesNomes[i].substring(0,3)}</button>`;
                 sDev.innerHTML += `<button onclick="mudarSubMes('${id}', 'dev')" id="btn-sub-dev-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold">${mesesNomes[i].substring(0,3)}</button>`;
 
                 document.getElementById('container-salario-meses').innerHTML += `<div id="sal-mes-${id}" class="sal-content hidden"><div class="admin-only flex gap-2 mb-4 p-3 bg-green-50 rounded border"><input type="text" id="desc-sal-${id}" placeholder="Fonte" class="p-2 border rounded text-xs flex-1"><input type="number" id="valor-sal-${id}" placeholder="R$" class="p-2 border rounded text-xs w-24"><button onclick="addItem('${id}', 'sal')" class="bg-green-600 text-white px-4 rounded text-xs font-bold uppercase">ADD</button></div><table class="w-full text-xs border bg-white"><tbody id="tabela-sal-${id}"></tbody></table></div>`;
-                document.getElementById('container-devedores-meses').innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden"><div class="admin-only flex gap-2 mb-4 p-3 bg-orange-50 rounded border"><input type="text" id="desc-dev-${id}" placeholder="Nome" class="p-2 border rounded text-xs flex-1"><input type="number" id="valor-dev-${id}" placeholder="R$" class="p-2 border rounded text-xs w-24"><button onclick="addItem('${id}', 'dev')" class="bg-orange-600 text-white px-4 rounded text-xs font-bold uppercase">ADD</button></div><table class="w-full text-xs border bg-white"><tbody id="tabela-dev-${id}"></tbody></table></div>`;
+                document.getElementById('container-devedores-meses').innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden"><div class="admin-only flex gap-2 mb-4 p-3 bg-orange-50 rounded border"><input type="text" id="desc-dev-${id}" placeholder="Nome" class="p-2 border rounded text-xs flex-1"><input type="number" id="valor-dev-${id}" placeholder="R$" class="p-2 border rounded text-xs w-28"><button onclick="addItem('${id}', 'dev')" class="bg-orange-600 text-white px-4 rounded text-xs font-bold uppercase">ADD</button></div><table class="w-full text-xs border bg-white"><tbody id="tabela-dev-${id}"></tbody></table></div>`;
 
                 cGas.innerHTML += `
                 <div id="aba-${id}" class="p-4 md:p-6 content-tab">
@@ -198,29 +244,28 @@
             });
         };
 
+        window.mudarAba = (id) => {
+            document.querySelectorAll('.content-tab').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
+            if(document.getElementById('aba-'+id)) document.getElementById('aba-'+id).classList.add('active');
+            document.getElementById('btn-'+id).classList.add('tab-active');
+            if(id === 'calendario') renderCalendario();
+        };
+
         window.mudarSubMes = (id, tipo) => {
             document.querySelectorAll(`.${tipo}-content`).forEach(e => e.classList.add('hidden'));
             document.getElementById(`${tipo}-mes-${id}`).classList.remove('hidden');
         };
 
         window.addItem = (mes, tipo) => {
-            if(!isAdmin) return alert("Desbloqueie primeiro");
             const d = document.getElementById(`desc-${tipo}-${mes}`).value;
             const v = document.getElementById(`valor-${tipo}-${mes}`).value;
             const venc = document.getElementById(`venc-${tipo}-${mes}`)?.value || 0;
             if(!d || !v) return;
             const nr = push(ref(dbFirebase, `pegas_v1/${anoSelecionado}/transacoes/${mes}/${tipo}`));
             set(nr, { id: nr.key, desc: d, valor: parseFloat(v), vencimento: parseInt(venc), pago: false });
-            document.getElementById(`desc-${tipo}-${mes}`).value = ""; document.getElementById(`valor-${tipo}-${mes}`).value = "";
-        };
-
-        window.editarItem = (mes, tipo, id, campo, valorAtual) => {
-            if(!isAdmin) return;
-            const novo = prompt(`Editar ${campo}:`, valorAtual);
-            if(novo !== null) {
-                const up = {}; up[campo] = (campo === 'valor' || campo === 'vencimento') ? parseFloat(novo) : novo;
-                update(ref(dbFirebase, `pegas_v1/${anoSelecionado}/transacoes/${mes}/${tipo}/${id}`), up);
-            }
+            document.getElementById(`desc-${tipo}-${mes}`).value = ""; 
+            document.getElementById(`valor-${tipo}-${mes}`).value = "";
         };
 
         window.togglePago = (mes, id, est) => { 
@@ -231,6 +276,16 @@
             if(isAdmin && confirm("Excluir?")) remove(ref(dbFirebase, `pegas_v1/${anoSelecionado}/transacoes/${mes}/${t}/${id}`)); 
         };
 
+        window.editarItem = (mes, tipo, id, campo, valorAtual) => {
+            if(!isAdmin) return;
+            const novo = prompt(`Editar ${campo}:`, valorAtual);
+            if(novo !== null) {
+                const up = {}; 
+                up[campo] = (campo === 'valor' || campo === 'vencimento') ? parseFloat(novo) : novo;
+                update(ref(dbFirebase, `pegas_v1/${anoSelecionado}/transacoes/${mes}/${tipo}/${id}`), up);
+            }
+        };
+
         const renderTudo = () => {
             const lRec = []; const lGas = [];
             mesesIds.forEach(id => {
@@ -238,30 +293,23 @@
                 const dSal = localDB.transacoes?.[id]?.sal || {};
                 document.getElementById(`tabela-sal-${id}`).innerHTML = Object.values(dSal).map(i => {
                     tSal += i.valor;
-                    return `<tr class="border-b"><td class="p-3 editable" onclick="editarItem('${id}','sal','${i.id}','desc','${i.desc}')">${getEmoji(i.desc)}${i.desc}</td><td class="p-3 text-right font-bold text-green-600 editable" onclick="editarItem('${id}','sal','${i.id}','valor','${i.valor}')">R$ ${i.valor.toFixed(2)}</td><td class="p-2 text-right"><button onclick="excluirItem('${id}','sal','${i.id}')" class="admin-only-inline text-red-400">✕</button></td></tr>`;
+                    return `<tr class="border-b"><td class="p-3 editable" onclick="editarItem('${id}','sal','${i.id}','desc','${i.desc}')">${getEmoji(i.desc)}${i.desc}</td><td class="p-3 text-right font-bold text-green-600">R$ ${i.valor.toFixed(2)}</td><td class="p-2 text-right"><button onclick="excluirItem('${id}','sal','${i.id}')" class="admin-only-inline text-red-400">✕</button></td></tr>`;
                 }).join('');
 
                 const dDev = localDB.transacoes?.[id]?.dev || {};
-                document.getElementById(`tabela-dev-${id}`).innerHTML = Object.values(dDev).map(i => `<tr class="border-b"><td class="p-3 editable" onclick="editarItem('${id}','dev','${i.id}','desc','${i.desc}')">${getEmoji(i.desc)}${i.desc}</td><td class="p-3 text-right font-bold text-orange-600 editable" onclick="editarItem('${id}','dev','${i.id}','valor','${i.valor}')">R$ ${i.valor.toFixed(2)}</td><td class="p-2 text-right"><button onclick="excluirItem('${id}','dev','${i.id}')" class="admin-only-inline text-red-400">✕</button></td></tr>`).join('');
+                document.getElementById(`tabela-dev-${id}`).innerHTML = Object.values(dDev).map(i => `<tr class="border-b"><td class="p-3 editable" onclick="editarItem('${id}','dev','${i.id}','desc','${i.desc}')">${getEmoji(i.desc)}${i.desc}</td><td class="p-3 text-right font-bold text-orange-600">R$ ${i.valor.toFixed(2)}</td><td class="p-2 text-right"><button onclick="excluirItem('${id}','dev','${i.id}')" class="admin-only-inline text-red-400">✕</button></td></tr>`).join('');
 
                 const dGas = localDB.transacoes?.[id]?.gas || {};
                 document.getElementById(`tabela-gas-${id}`).innerHTML = Object.values(dGas).map(i => {
                     tGas += i.valor;
                     const dif = i.vencimento - diaHoje;
-                    let cls = ""; let btnCls = ""; let btnIcn = "";
-                    const ehAnoAtual = anoSelecionado == new Date().getFullYear();
-                    
-                    if(i.pago) { cls="pago"; btnCls="is-pago"; btnIcn="✓"; }
-                    else if(i.vencimento > 0 && ehAnoAtual) {
-                        if(i.vencimento === diaHoje) { cls="vence-hoje"; btnCls="is-atrasado"; btnIcn="!"; }
-                        else if(dif > 0 && dif <= 2) { cls="vence-perto"; }
-                        else if(dif < 0) { cls="atrasado"; btnCls="is-atrasado"; btnIcn="X"; }
-                    }
+                    let cls = i.pago ? "pago" : (i.vencimento === diaHoje ? "vence-hoje" : (dif > 0 && dif <= 2 ? "vence-perto" : (dif < 0 && i.vencimento > 0 ? "atrasado" : "")));
+                    let btnCls = i.pago ? "is-pago" : (i.vencimento < diaHoje && i.vencimento > 0 ? "is-atrasado" : "");
                     return `<tr class="border-b ${cls}">
-                        <td class="p-2"><div onclick="togglePago('${id}','${i.id}',${i.pago})" class="btn-check ${btnCls}">${btnIcn}</div></td>
+                        <td class="p-2"><div onclick="togglePago('${id}','${i.id}',${i.pago})" class="btn-check ${btnCls}">${i.pago ? '✓' : ''}</div></td>
                         <td class="p-3 editable" onclick="editarItem('${id}','gas','${i.id}','desc','${i.desc}')">${getEmoji(i.desc)}${i.desc}</td>
-                        <td class="p-3 text-center font-bold text-slate-400 editable" onclick="editarItem('${id}','gas','${i.id}','vencimento','${i.vencimento}')">${i.vencimento > 0 ? i.vencimento : '--'}</td>
-                        <td class="p-3 text-right font-bold editable" onclick="editarItem('${id}','gas','${i.id}','valor','${i.valor}')">R$ ${i.valor.toFixed(2)}</td>
+                        <td class="p-3 text-center font-bold text-slate-400">${i.vencimento > 0 ? i.vencimento : '--'}</td>
+                        <td class="p-3 text-right font-bold">R$ ${i.valor.toFixed(2)}</td>
                         <td class="p-2 text-right"><button onclick="excluirItem('${id}','gas','${i.id}')" class="admin-only-inline text-red-400">✕</button></td>
                     </tr>`;
                 }).join('');
@@ -275,14 +323,66 @@
                 elTot.style.color = saldo >= 0 ? '#2563eb' : '#dc2626';
             });
             chartSaude.data.datasets[0].data = lRec; chartSaude.data.datasets[1].data = lGas; chartSaude.update();
+            renderCalendario();
         };
 
-        window.mudarAba = (id) => {
-            document.querySelectorAll('.content-tab').forEach(e => e.classList.remove('active'));
-            document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
-            document.getElementById('aba-'+id).classList.add('active');
-            document.getElementById('btn-'+id).classList.add('tab-active');
-            if(id==='salario') mudarSubMes('jan','sal'); if(id==='devedores') mudarSubMes('jan','dev');
+        // CALENDÁRIO COM LÓGICA DE DIAS DA SEMANA CORRIGIDA
+        window.renderCalendario = () => {
+            const mesId = document.getElementById('cal-mes-select').value;
+            const container = document.getElementById('calendar-body');
+            if(!container) return;
+            container.innerHTML = '';
+            
+            const mesIndex = mesesIds.indexOf(mesId);
+            const ano = parseInt(anoSelecionado);
+            
+            // Descobrir em qual dia da semana começa o mês (0=Dom, 1=Seg...)
+            const primeiroDiaDaSemana = new Date(ano, mesIndex, 1).getDay();
+            // Descobrir quantos dias tem o mês
+            const diasNoMes = new Date(ano, mesIndex + 1, 0).getDate();
+            
+            // 1. Preencher espaços vazios do início (Dias do mês anterior)
+            for (let x = 0; x < primeiroDiaDaSemana; x++) {
+                container.innerHTML += `<div class="calendar-day empty border border-slate-50"></div>`;
+            }
+            
+            // 2. Preencher os dias do mês
+            const gastos = localDB.transacoes?.[mesId]?.gas || {};
+            for (let dia = 1; dia <= diasNoMes; dia++) {
+                const itensDia = Object.values(gastos).filter(g => g.vencimento == dia);
+                let htmlItens = itensDia.map(g => `
+                    <div class="event-item ${g.pago ? 'event-pago' : 'event-pendente'}">
+                        ${g.desc}
+                    </div>
+                `).join('');
+                
+                const eHoje = (dia == diaHoje && mesIndex == new Date().getMonth() && ano == new Date().getFullYear());
+                
+                container.innerHTML += `
+                    <div class="calendar-day border border-slate-100">
+                        <span class="font-bold ${eHoje ? 'bg-blue-600 text-white px-1.5 rounded-full' : 'text-slate-400'}">${dia}</span>
+                        <div class="mt-1">${htmlItens}</div>
+                    </div>
+                `;
+            }
+        };
+
+        window.gerarWrapped = () => {
+            let total = 0; let mesEcon = ""; let menorGasto = Infinity;
+            let contas = 0; let pagas = 0;
+            mesesIds.forEach((id, i) => {
+                const sal = Object.values(localDB.transacoes?.[id]?.sal || {}).reduce((a,b)=>a+b.valor,0);
+                const gasArr = Object.values(localDB.transacoes?.[id]?.gas || {});
+                const gasSoma = gasArr.reduce((a,b)=>a+b.valor,0);
+                total += (sal + gasSoma);
+                if(gasSoma > 0 && gasSoma < menorGasto) { menorGasto = gasSoma; mesEcon = mesesNomes[i]; }
+                gasArr.forEach(g => { contas++; if(g.pago) pagas++; });
+            });
+            document.getElementById('w-ano').innerText = anoSelecionado;
+            document.getElementById('w-total').innerText = "R$ " + total.toLocaleString('pt-BR');
+            document.getElementById('w-economico').innerText = mesEcon || "---";
+            document.getElementById('w-pontualidade').innerText = contas > 0 ? Math.round((pagas/contas)*100)+"%" : "0%";
+            document.getElementById('modal-wrapped').style.display = 'flex';
         };
 
         const initChart = () => {
@@ -290,9 +390,9 @@
             chartSaude = new Chart(ctx, { type: 'bar', data: { labels: mesesNomes.map(m => m.substring(0,3)), datasets: [{label:'Receitas', data:[], backgroundColor:'#22c55e'}, {label:'Gastos', data:[], backgroundColor:'#ef4444'}] }, options: { responsive: true, maintainAspectRatio: false } });
         };
 
-        montarEstrutura(); initChart();
+        montarEstrutura(); 
+        initChart();
         onValue(dbRef, (snap) => { localDB = snap.val() || { transacoes: {} }; renderTudo(); });
-
     </script>
 </body>
 </html>
