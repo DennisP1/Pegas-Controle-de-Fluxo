@@ -6,6 +6,7 @@
     <title>Pegas - Controle de Fluxo v1.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Correção de Layout e Cores */
         .tab-active { border-bottom: 3px solid #3b82f6 !important; color: #3b82f6 !important; font-weight: 800 !important; background-color: white !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -15,8 +16,8 @@
         .content-tab.active { display: block !important; }
         .nav-wrapper { position: relative; display: flex; align-items: center; background: #f8fafc; }
         .nav-scroll { scroll-behavior: smooth; }
-        .arrow-btn { background: #f8fafc; z-index: 60; padding: 0 10px; height: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; color: #64748b; }
-        .fixa-chip { padding: 4px 10px; background: #e2e8f0; border-radius: 12px; font-size: 10px; font-weight: bold; color: #475569; cursor: pointer; white-space: nowrap; margin-bottom: 5px; }
+        .arrow-btn { background: #f8fafc; z-index: 60; padding: 0 12px; height: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; color: #64748b; font-size: 10px; }
+        .fixa-chip { padding: 4px 10px; background: #e2e8f0; border-radius: 12px; font-size: 10px; font-weight: bold; color: #475569; cursor: pointer; white-space: nowrap; margin-bottom: 5px; margin-right: 4px; }
 
         @media print {
             .nav-wrapper, .bg-slate-800, .fixa-chip, button, input, .print-hidden { display: none !important; }
@@ -50,17 +51,20 @@
         </div>
 
         <div id="aba-resumo" class="p-6 content-tab active">
-            <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                    <tr class="bg-slate-100 uppercase font-bold text-slate-500">
-                        <th class="p-4 border-b">Mês</th>
-                        <th class="p-4 border-b text-right text-green-700">Receitas (+)</th>
-                        <th class="p-4 border-b text-right text-red-700">Gastos (-)</th>
-                        <th class="p-4 border-b text-right bg-slate-200 text-slate-800">Saldo</th>
-                    </tr>
-                </thead>
-                <tbody id="corpo-resumo"></tbody>
-            </table>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100 uppercase font-bold text-slate-500">
+                            <th class="p-4 border-b">Mês</th>
+                            <th class="p-4 border-b text-right text-green-700">Receitas (+)</th>
+                            <th class="p-4 border-b text-right text-red-700">Gastos (-)</th>
+                            <th class="p-4 border-b text-right bg-slate-200 text-slate-800">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-resumo">
+                        </tbody>
+                </table>
+            </div>
         </div>
 
         <div id="aba-salario" class="p-6 content-tab">
@@ -82,15 +86,15 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // CONFIGURAÇÃO DO FIREBASE (COLE AQUI O SEU DO CONSOLE)
+        // CONFIGURAÇÃO DO FIREBASE (Substitua pelos seus dados)
         const firebaseConfig = {
-            apiKey: "COLE_AQUI",
-            authDomain: "COLE_AQUI",
-            databaseURL: "COLE_AQUI",
-            projectId: "COLE_AQUI",
-            storageBucket: "COLE_AQUI",
-            messagingSenderId: "COLE_AQUI",
-            appId: "COLE_AQUI"
+            apiKey: "SUA_API_KEY",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            databaseURL: "https://SEU_PROJETO.firebaseio.com",
+            projectId: "SEU_PROJETO",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "ID",
+            appId: "ID_DO_APP"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -103,8 +107,8 @@
 
         let localDB = { transacoes: {} };
 
-        // Montar HTML Inicial
-        const initHTML = () => {
+        // Montagem da Estrutura (Corrigindo o bug visual)
+        const montarEstrutura = () => {
             const mesesNav = document.getElementById('meses-nav-lista');
             const corpoRes = document.getElementById('corpo-resumo');
             const subSal = document.getElementById('sub-nav-salario');
@@ -114,24 +118,45 @@
             const contGas = document.getElementById('container-gastos-meses');
 
             mesesIds.forEach((id, i) => {
-                mesesNav.innerHTML += `<button onclick="mudarAba('${id}')" id="btn-${id}" class="nav-btn px-5 py-4 text-[10px] uppercase border-l">${mesesNomes[i]}</button>`;
+                // Barra de navegação
+                mesesNav.innerHTML += `<button onclick="mudarAba('${id}')" id="btn-${id}" class="nav-btn px-5 py-4 text-[10px] uppercase border-l border-gray-200 whitespace-nowrap">${mesesNomes[i]}</button>`;
                 
-                corpoRes.innerHTML += `<tr><td class="p-4 border-b font-bold">${mesesNomes[i]}</td><td id="res-sal-${id}" class="p-4 border-b text-right text-green-600">R$ 0,00</td><td id="res-gas-${id}" class="p-4 border-b text-right text-red-500">R$ 0,00</td><td id="res-tot-${id}" class="p-4 border-b text-right font-bold">R$ 0,00</td></tr>`;
+                // Tabela de resumo
+                corpoRes.innerHTML += `
+                    <tr class="border-b">
+                        <td class="p-4 font-bold text-slate-600">${mesesNomes[i]}</td>
+                        <td id="res-sal-${id}" class="p-4 text-right text-green-600 font-mono font-bold">R$ 0,00</td>
+                        <td id="res-gas-${id}" class="p-4 text-right text-red-500 font-mono font-bold">R$ 0,00</td>
+                        <td id="res-tot-${id}" class="p-4 text-right font-mono font-bold bg-slate-50">R$ 0,00</td>
+                    </tr>`;
                 
-                subSal.innerHTML += `<button onclick="mudarMesSubAba('${id}', 'sal')" id="btn-sal-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase bg-white">${id}</button>`;
-                subDev.innerHTML += `<button onclick="mudarMesSubAba('${id}', 'dev')" id="btn-dev-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase bg-white">${id}</button>`;
+                // Sub-menus
+                subSal.innerHTML += `<button onclick="mudarMesSubAba('${id}', 'sal')" id="btn-sal-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold bg-white text-gray-500">${mesesNomes[i].substring(0,3)}</button>`;
+                subDev.innerHTML += `<button onclick="mudarMesSubAba('${id}', 'dev')" id="btn-dev-${id}" class="px-3 py-1 border rounded-full text-[9px] uppercase font-bold bg-white text-gray-500">${mesesNomes[i].substring(0,3)}</button>`;
 
-                contSal.innerHTML += `<div id="sal-mes-${id}" class="sal-content hidden"><div class="flex gap-2 mb-4"><input type="text" id="desc-sal-${id}" placeholder="Fonte" class="flex-1 p-2 border rounded text-sm"><input type="number" id="valor-sal-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm"><button onclick="addItem('${id}', 'sal')" class="bg-green-600 text-white px-4 rounded text-xs">OK</button></div><table class="w-full text-sm border"><tbody id="tabela-sal-${id}"></tbody></table></div>`;
-                contDev.innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden"><div class="flex gap-2 mb-4"><input type="text" id="desc-dev-${id}" placeholder="Nome" class="flex-1 p-2 border rounded text-sm"><input type="number" id="valor-dev-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm"><button onclick="addItem('${id}', 'dev')" class="bg-orange-600 text-white px-4 rounded text-xs">OK</button></div><table class="w-full text-sm border"><tbody id="tabela-dev-${id}"></tbody></table></div>`;
+                // Containers de Receitas e Devedores
+                contSal.innerHTML += `<div id="sal-mes-${id}" class="sal-content hidden"><div class="flex gap-2 mb-4 p-4 bg-green-50 rounded border"><input type="text" id="desc-sal-${id}" placeholder="Fonte" class="flex-1 p-2 border rounded text-sm"><input type="number" id="valor-sal-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm"><button onclick="addItem('${id}', 'sal')" class="bg-green-600 text-white px-4 rounded text-xs font-bold">OK</button></div><table class="w-full text-sm border"><tbody id="tabela-sal-${id}" class="bg-white"></tbody></table></div>`;
+                contDev.innerHTML += `<div id="dev-mes-${id}" class="dev-content hidden"><div class="flex gap-2 mb-4 p-4 bg-orange-50 rounded border"><input type="text" id="desc-dev-${id}" placeholder="Nome" class="flex-1 p-2 border rounded text-sm"><input type="number" id="valor-dev-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm"><button onclick="addItem('${id}', 'dev')" class="bg-orange-600 text-white px-4 rounded text-xs font-bold">OK</button></div><table class="w-full text-sm border"><tbody id="tabela-dev-${id}" class="bg-white"></tbody></table></div>`;
 
-                let chips = despesasFixas.map(f => `<span class="fixa-chip mr-1" onclick="document.getElementById('desc-${id}').value='${f}';document.getElementById('valor-${id}').focus()">${f}</span>`).join('');
-                contGas.innerHTML += `<div id="aba-${id}" class="p-6 content-tab"><h3 class="font-bold mb-2 uppercase">${mesesNomes[i]}</h3><div class="flex flex-wrap mb-4">${chips}</div><div class="flex gap-2 mb-4"><input type="text" id="desc-${id}" placeholder="Gasto" class="flex-1 p-2 border rounded text-sm"><input type="number" id="valor-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm"><button onclick="addItem('${id}', 'gas')" class="bg-blue-600 text-white px-4 rounded text-xs">OK</button></div><table class="w-full text-sm border"><tbody id="tabela-gas-${id}"></tbody></table></div>`;
+                // Abas de Fluxo (Gastos)
+                let chips = despesasFixas.map(f => `<span class="fixa-chip" onclick="window.preencherFixa('${id}', '${f}')">${f}</span>`).join('');
+                contGas.innerHTML += `
+                    <div id="aba-${id}" class="p-6 content-tab">
+                        <h3 class="text-xl font-bold text-slate-700 mb-2 uppercase">Fluxo: ${mesesNomes[i]}</h3>
+                        <div class="flex flex-wrap mb-4">${chips}</div>
+                        <div class="flex gap-2 mb-4 p-4 bg-slate-50 border rounded">
+                            <input type="text" id="desc-${id}" placeholder="Gasto" class="flex-1 p-2 border rounded text-sm">
+                            <input type="number" id="valor-${id}" placeholder="R$" class="w-24 p-2 border rounded text-sm">
+                            <button onclick="addItem('${id}', 'gas')" class="bg-blue-600 text-white px-4 rounded text-xs font-bold">OK</button>
+                        </div>
+                        <table class="w-full text-sm border"><tbody id="tabela-gas-${id}" class="bg-white"></tbody></table>
+                    </div>`;
             });
         };
 
-        initHTML();
+        montarEstrutura();
 
-        // Sincronizar Firebase -> Local
+        // Firebase Sync
         onValue(dbRef, (snap) => {
             localDB = snap.val() || { transacoes: {} };
             renderTudo();
@@ -139,12 +164,14 @@
 
         // Funções Globais
         window.scrollNav = (a) => document.getElementById('nav-principal').scrollLeft += a;
-        
+        window.preencherFixa = (mes, nome) => { document.getElementById('desc-'+mes).value = nome; document.getElementById('valor-'+mes).focus(); };
+
         window.mudarAba = (id) => {
             document.querySelectorAll('.content-tab').forEach(e => e.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('tab-active'));
             document.getElementById('aba-' + id).classList.add('active');
             document.getElementById('btn-' + id).classList.add('tab-active');
+            document.getElementById('btn-' + id).scrollIntoView({ behavior: 'smooth', inline: 'center' });
             if(id === 'salario') mudarMesSubAba('jan', 'sal');
             if(id === 'devedores') mudarMesSubAba('jan', 'dev');
         };
@@ -157,9 +184,9 @@
         };
 
         window.addItem = (mes, tipo) => {
-            const pref = tipo === 'sal' ? '-sal-' : (tipo === 'dev' ? '-dev-' : '-');
-            const d = document.getElementById(`desc${pref}${mes}`);
-            const v = document.getElementById(`valor${pref}${mes}`);
+            const p = tipo === 'sal' ? '-sal-' : (tipo === 'dev' ? '-dev-' : '-');
+            const d = document.getElementById(`desc${p}${mes}`);
+            const v = document.getElementById(`valor${p}${mes}`);
             if(!d.value || !v.value) return;
 
             const refItem = push(ref(dbFirebase, `pegas_v1/transacoes/${mes}/${tipo}`));
@@ -168,8 +195,10 @@
         };
 
         window.excluirItem = (mes, tipo, id) => {
-            if(confirm("Excluir?")) remove(ref(dbFirebase, `pegas_v1/transacoes/${mes}/${tipo}/${id}`));
+            if(confirm("Excluir item?")) remove(ref(dbFirebase, `pegas_v1/transacoes/${mes}/${tipo}/${id}`));
         };
+
+        function formatar(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
         const renderTudo = () => {
             mesesIds.forEach(id => {
@@ -177,18 +206,20 @@
                     const cont = document.getElementById(`tabela-${tipo === 'gas' ? 'gas' : tipo}-${id}`);
                     const dados = localDB.transacoes?.[id]?.[tipo] || {};
                     cont.innerHTML = Object.values(dados).map(i => `
-                        <tr class="border-b"><td class="p-2">${i.desc}</td><td class="p-2 text-right font-bold">R$ ${i.valor.toFixed(2)}</td>
-                        <td class="p-2 text-right"><button onclick="excluirItem('${id}','${tipo}','${i.id}')" class="text-red-500">✕</button></td></tr>
+                        <tr class="border-b"><td class="p-3 text-slate-700">${i.desc}</td><td class="p-3 text-right font-bold">R$ ${i.valor.toFixed(2)}</td>
+                        <td class="p-3 text-right"><button onclick="excluirItem('${id}','${tipo}','${i.id}')" class="text-red-500 font-bold">✕</button></td></tr>
                     `).join('');
                 });
                 
                 const rSal = Object.values(localDB.transacoes?.[id]?.sal || {}).reduce((s,i) => s+i.valor, 0);
                 const rGas = Object.values(localDB.transacoes?.[id]?.gas || {}).reduce((s,i) => s+i.valor, 0);
-                document.getElementById(`res-sal-${id}`).innerText = "R$ " + rSal.toFixed(2);
-                document.getElementById(`res-gas-${id}`).innerText = "R$ " + rGas.toFixed(2);
+                
+                document.getElementById(`res-sal-${id}`).innerText = formatar(rSal);
+                document.getElementById(`res-gas-${id}`).innerText = formatar(rGas);
                 const total = rSal - rGas;
-                document.getElementById(`res-tot-${id}`).innerText = "R$ " + total.toFixed(2);
-                document.getElementById(`res-tot-${id}`).className = `p-4 border-b text-right font-bold ${total>=0?'text-blue-600':'text-red-600'}`;
+                const elTot = document.getElementById(`res-tot-${id}`);
+                elTot.innerText = formatar(total);
+                elTot.style.color = total >= 0 ? '#2563eb' : '#dc2626';
             });
         };
     </script>
