@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pegas v2.0.4 - Excel Style</title>
+    
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/732/732220.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&family=Roboto+Mono&display=swap" rel="stylesheet">
     <style>
@@ -14,6 +17,7 @@
         .excel-table tr:nth-child(even) { background-color: #f3f4f6; }
         .excel-table tr:hover { background-color: #dcfce7; }
         
+        /* Estilo para Linha Liquidada (Riscada) */
         .liquidado { background-color: #f1f5f9 !important; color: #94a3b8 !important; text-decoration: line-through; opacity: 0.7; }
         .liquidado .money { text-decoration: line-through; color: #94a3b8 !important; }
 
@@ -33,9 +37,14 @@
         <div class="bg-[#217346] text-white p-2 flex justify-between items-center print-hidden">
             <div class="flex items-center gap-4">
                 <span class="font-bold text-sm ml-2 uppercase">Pegas Financeiro - Excel View</span>
-                <select id="select-ano" class="bg-green-700 text-white text-xs border-none outline-none rounded px-2 py-1">
-                    <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
-                    <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option><option value="2030">2030</option>
+                <select id="select-ano" class="bg-green-700 text-white text-xs border-none outline-none rounded px-2 py-1 cursor-pointer">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                    <option value="2029">2029</option>
+                    <option value="2030">2030</option>
                 </select>
             </div>
             <button onclick="window.print()" class="hover:bg-green-600 px-3 py-1 rounded text-xs flex items-center gap-2">⎙ IMPRIMIR</button>
@@ -50,6 +59,7 @@
                     </thead>
                     <tbody id="corpo-resumo"></tbody>
                 </table>
+                <p class="text-[10px] mt-4 text-gray-500">* Itens riscados (liquidados) não são contabilizados nos totais acima.</p>
             </div>
 
             <div id="aba-salario" class="content-tab hidden">
@@ -65,7 +75,7 @@
             <div id="container-gastos-meses"></div>
         </div>
 
-        <div class="bg-gray-100 border-t border-gray-300 flex px-4 pt-2 print-hidden">
+        <div class="bg-gray-100 border-t border-gray-300 flex px-4 pt-2 print-hidden overflow-x-auto">
             <button onclick="mudarAba('resumo')" id="btn-resumo" class="sheet-tab active">Resumo_Anual</button>
             <button onclick="mudarAba('salario')" id="btn-salario" class="sheet-tab">Receitas</button>
             <button onclick="mudarAba('devedores')" id="btn-devedores" class="sheet-tab">Devedores</button>
@@ -114,7 +124,7 @@
 
                 contGas.innerHTML += `
                     <div id="aba-${id}" class="content-tab hidden">
-                        <h3 class="font-bold text-green-900 uppercase mb-2">DESPESAS: ${mesesNomes[i]}</h3>
+                        <h3 class="font-bold text-green-900 uppercase mb-2">CONTROLE DE DESPESAS: ${mesesNomes[i]}</h3>
                         <div class="flex gap-2 mb-4 bg-gray-100 p-2 border border-gray-300">
                             <input type="text" id="desc-${id}" placeholder="Descrição" class="excel-input flex-1">
                             <input type="number" id="dia-${id}" placeholder="Dia" class="excel-input w-16">
@@ -122,7 +132,7 @@
                             <button onclick="addItem('${id}', 'gas')" class="bg-[#217346] text-white px-6 py-1 font-bold">LANÇAR</button>
                         </div>
                         <table class="excel-table">
-                            <thead><tr><th class="w-16 text-center">DIA</th><th>DESCRIÇÃO</th><th class="text-right">VALOR</th><th class="w-36 text-center">AÇÕES</th></tr></thead>
+                            <thead><tr><th class="w-16 text-center">DIA</th><th>DESCRIÇÃO</th><th class="text-right">VALOR</th><th class="w-40 text-center">AÇÕES</th></tr></thead>
                             <tbody id="tabela-gas-${id}"></tbody>
                         </table>
                     </div>`;
@@ -158,7 +168,7 @@
         };
 
         window.excluirItem = (mes, tipo, id) => {
-            if(confirm("Remover este registro?")) remove(ref(dbFirebase, `pegas_v1/transacoes/${anoAtual}/${mes}/${tipo}/${id}`));
+            if(confirm("Deseja apagar este registro permanentemente?")) remove(ref(dbFirebase, `pegas_v1/transacoes/${anoAtual}/${mes}/${tipo}/${id}`));
         };
 
         window.editarItem = (mes, tipo, id, campoParaEditar, valorAtual) => {
@@ -183,7 +193,7 @@
                             <td class="uppercase font-semibold">${i.desc}</td>
                             <td class="text-right money">${formatar(i.valor)}</td>
                             <td class="text-center">
-                                <button onclick="alternarLiquidado('${id}','${tipo}','${i.id}', ${i.liquidado})" class="mr-2 ${i.liquidado ? 'text-gray-400 font-normal' : 'text-green-600 font-bold'}" title="Liquidar">✓</button>
+                                <button onclick="alternarLiquidado('${id}','${tipo}','${i.id}', ${i.liquidado})" class="mr-2 ${i.liquidado ? 'text-gray-400 font-normal' : 'text-green-600 font-bold'}" title="Marcar como Liquidado">✓</button>
                                 <button onclick="editarItem('${id}','${tipo}','${i.id}', 'desc', '${i.desc}')" class="text-blue-500 mr-2" title="Editar Nome">✎</button>
                                 <button onclick="editarItem('${id}','${tipo}','${i.id}', 'valor', '${i.valor}')" class="text-emerald-600 mr-2" title="Editar Valor">$</button>
                                 <button onclick="excluirItem('${id}','${tipo}','${i.id}')" class="text-red-400 hover:text-red-700">✕</button>
@@ -191,6 +201,7 @@
                         </tr>`).join('');
                 });
                 
+                // Cálculo do Resumo (apenas itens NÃO liquidados)
                 const rSal = Object.values(localDB[id]?.sal || {}).filter(i => !i.liquidado).reduce((s,i) => s+i.valor, 0);
                 const rGas = Object.values(localDB[id]?.gas || {}).filter(i => !i.liquidado).reduce((s,i) => s+i.valor, 0);
                 
