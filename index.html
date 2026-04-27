@@ -225,10 +225,21 @@
         };
 
         window.editarItem = (mes, tipo, id, campoParaEditar, valorAtual) => {
-            let novoValor = prompt(`Editar ${campoParaEditar}:`, valorAtual);
+            let promptMsg = campoParaEditar === 'valor' ? "Novo valor numérico (R$):" : "Nova descrição:";
+            let novoValor = prompt(promptMsg, valorAtual);
+
             if (novoValor !== null && novoValor.trim() !== "") {
                 let updateDados = {};
-                updateDados[campoParaEditar] = (campoParaEditar === 'valor') ? parseFloat(novoValor) : novoValor.toUpperCase();
+                if (campoParaEditar === 'valor') {
+                    let num = parseFloat(novoValor.replace(',', '.'));
+                    if (isNaN(num)) {
+                        alert("ERRO: Insira um número válido.");
+                        return;
+                    }
+                    updateDados[campoParaEditar] = num;
+                } else {
+                    updateDados[campoParaEditar] = novoValor.toUpperCase();
+                }
                 update(ref(dbFirebase, `pegas_v1/transacoes/${anoAtual}/${mes}/${tipo}/${id}`), updateDados);
             }
         };
@@ -247,9 +258,10 @@
                             <td class="text-right money font-bold">${formatar(i.valor)}</td>
                             <td class="text-center print-hidden">
                                 <div class="flex justify-center gap-3">
-                                    <button onclick="alternarLiquidado('${id}','${tipo}','${i.id}', ${i.liquidado})" class="${i.liquidado ? 'text-gray-400' : 'text-green-600'} font-bold">✓</button>
-                                    <button onclick="editarItem('${id}','${tipo}','${i.id}', 'desc', '${i.desc}')" class="text-blue-500">✎</button>
-                                    <button onclick="excluirItem('${id}','${tipo}','${i.id}')" class="text-red-400 hover:text-red-700">✕</button>
+                                    <button onclick="alternarLiquidado('${id}','${tipo}','${i.id}', ${i.liquidado})" title="Marcar Liquidado" class="${i.liquidado ? 'text-gray-400' : 'text-green-600'} font-bold">✓</button>
+                                    <button onclick="editarItem('${id}','${tipo}','${i.id}', 'desc', '${i.desc}')" title="Editar Descrição" class="text-blue-500">✎</button>
+                                    <button onclick="editarItem('${id}','${tipo}','${i.id}', 'valor', '${i.valor}')" title="Editar Valor" class="text-amber-500 font-bold">$</button>
+                                    <button onclick="excluirItem('${id}','${tipo}','${i.id}')" title="Excluir" class="text-red-400 hover:text-red-700">✕</button>
                                 </div>
                             </td>
                         </tr>`).join('') + `
@@ -265,7 +277,7 @@
                 const rGas = Object.values(localDB[id]?.gas || {}).filter(i => !i.liquidado).reduce((s,i) => s+i.valor, 0);
                 const rDev = Object.values(localDB[id]?.dev || {}).filter(i => !i.liquidado).reduce((s,i) => s+i.valor, 0);
                 
-                const receitaTotal = rSal + rDev; // Soma salário + devedores em aberto
+                const receitaTotal = rSal + rDev; 
                 document.getElementById(`res-sal-${id}`).innerText = formatar(receitaTotal);
                 document.getElementById(`res-gas-${id}`).innerText = formatar(rGas);
                 
