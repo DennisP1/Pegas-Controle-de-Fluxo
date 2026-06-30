@@ -3,318 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pegas v2.1.1 - Pro View</title>
-    
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/732/732220.png">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <title>Gestão de Presença</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; color: #1e293b; }
-        .excel-table { border-collapse: collapse; width: 100%; background: white; border: 1px solid #cbd5e1; }
-        .excel-table th { background-color: #217346; color: white; font-weight: 600; text-align: left; padding: 10px 12px; border: 1px solid #1a5a37; font-size: 13px; position: sticky; top: 0; }
-        .excel-table td { border: 1px solid #e2e8f0; padding: 8px 12px; font-size: 13px; }
-        .excel-table tr:nth-child(even) { background-color: #f8fafc; }
-        .excel-table tr:hover { background-color: #f0fdf4; }
+        :root { --primary: #1a73e8; --danger: #d93025; --success: #34a853; --text: #3c4043; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f1f3f4; padding: 20px; color: var(--text); }
+        .container { max-width: 950px; margin: auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 14px; border-bottom: 1px solid #e8eaed; text-align: left; }
+        select { padding: 8px; border-radius: 6px; border: 1px solid #dadce0; width: 100%; cursor: pointer; }
+        button { padding: 8px 16px; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer; font-weight: 500; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        .btn-del { background: #feebeb; color: var(--danger); }
+        .btn-file { background: #e6f4ea; color: var(--success); }
         
-        .liquidado { background-color: #f1f5f9 !important; color: #94a3b8 !important; opacity: 0.8; }
-        .liquidado .money { text-decoration: line-through; color: #94a3b8 !important; }
-
-        .excel-input { border: 1px solid #cbd5e1; padding: 6px 10px; outline: none; font-size: 13px; border-radius: 4px; transition: border 0.2s; }
-        .excel-input:focus { border: 1px solid #217346; ring: 1px solid #217346; }
-
-        .sheet-tab { padding: 8px 20px; background: #e2e8f0; border: 1px solid #cbd5e1; border-bottom: none; cursor: pointer; font-size: 13px; font-weight: 600; color: #64748b; margin-right: 2px; border-radius: 4px 4px 0 0; }
-        .sheet-tab.active { background: #fff; color: #217346; border-top: 3px solid #217346; position: relative; z-index: 10; }
-        
-        .sub-tab { transition: all 0.2s; border-radius: 4px; }
-        .sub-tab.active { background-color: #217346 !important; color: white !important; font-weight: bold; }
-
-        .money { font-family: 'Roboto Mono', monospace; }
-        @media print { .print-hidden { display: none !important; } body { background: white; } }
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 90%; max-width: 600px; padding: 25px; border-radius: 16px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
+        .day-header { font-weight: bold; text-align: center; font-size: 12px; padding: 5px; }
+        .day-box { padding: 10px 5px; text-align: center; border-radius: 6px; border: 1px solid #f1f3f4; font-size: 11px; min-height: 40px; }
+        .status-tag { display: block; font-size: 9px; margin-top: 4px; padding: 2px; border-radius: 3px; background: #f8f9fa; }
+        #saveIndicator { font-size: 12px; color: var(--success); opacity: 0; transition: opacity 0.5s; }
     </style>
 </head>
-<body class="p-2 md:p-6">
+<body>
 
-    <div class="max-w-6xl mx-auto bg-white shadow-xl border border-gray-300 rounded-lg overflow-hidden">
-        
-        <div class="bg-[#217346] text-white p-3 flex justify-between items-center print-hidden">
-            <div class="flex items-center gap-4">
-                <div class="bg-white p-1 rounded">
-                    <img src="https://cdn-icons-png.flaticon.com/512/732/732220.png" class="w-5 h-5">
-                </div>
-                <span class="font-bold text-sm tracking-wider">PEGAS FINANCEIRO v2.1.1</span>
-                <select id="select-ano" class="bg-green-800 text-white text-xs border border-green-600 outline-none rounded px-3 py-1 cursor-pointer font-bold hover:bg-green-700">
-                    <option value="2024">2024</option>
-                    <option value="2025">2025</option>
-                    <option value="2026" selected>2026</option>
-                    <option value="2027">2027</option>
-                    <option value="2028">2028</option>
-                    <option value="2029">2029</option>
-                    <option value="2030">2030</option>
-                </select>
-            </div>
-            <button onclick="window.print()" class="bg-green-700 hover:bg-green-600 px-4 py-1.5 rounded text-xs font-bold flex items-center gap-2 transition-colors">
-                <span>⎙</span> IMPRIMIR RELATÓRIO
-            </button>
-        </div>
-
-        <div class="p-4 md:p-8 min-h-[550px]">
-            
-            <div id="aba-resumo" class="content-tab">
-                <div class="flex justify-between items-end mb-4 border-b-2 border-green-700 pb-2">
-                    <h2 class="text-xl font-bold text-green-900 uppercase">Resumo de Fluxo de Caixa: <span id="label-ano-resumo">2026</span></h2>
-                    <span class="text-xs text-gray-500 font-medium italic">Itens riscados não somam no resumo</span>
-                </div>
-                
-                <table class="excel-table rounded-t-lg overflow-hidden">
-                    <thead>
-                        <tr>
-                            <th class="w-1/4">MÊS REFERÊNCIA</th>
-                            <th class="text-right">RECEITAS (ABERTO)</th>
-                            <th class="text-right">DESPESAS (ABERTO)</th>
-                            <th class="text-right">SALDO PREVISTO</th>
-                        </tr>
-                    </thead>
-                    <tbody id="corpo-resumo"></tbody>
-                </table>
-            </div>
-
-            <div id="aba-salario" class="content-tab hidden">
-                <h3 class="font-bold text-green-800 mb-3 uppercase tracking-tight">💰 Entradas e Salários</h3>
-                <div class="flex flex-wrap gap-1 mb-6 bg-gray-50 p-2 rounded border border-gray-200" id="sub-nav-salario"></div>
-                <div id="container-salario-meses"></div>
-            </div>
-
-            <div id="aba-devedores" class="content-tab hidden">
-                <h3 class="font-bold text-slate-700 mb-3 uppercase tracking-tight">🤝 Valores a Receber (Terceiros)</h3>
-                <div class="flex flex-wrap gap-1 mb-6 bg-gray-50 p-2 rounded border border-gray-200" id="sub-nav-devedores"></div>
-                <div id="container-devedores-meses"></div>
-            </div>
-
-            <div id="container-gastos-meses"></div>
-        </div>
-
-        <div class="bg-gray-200 border-t border-gray-300 flex px-4 pt-2 print-hidden overflow-x-auto gap-1">
-            <button onclick="mudarAba('resumo')" id="btn-resumo" class="sheet-tab active">📊 Resumo_Geral</button>
-            <button onclick="mudarAba('salario')" id="btn-salario" class="sheet-tab">💰 Receitas</button>
-            <button onclick="mudarAba('devedores')" id="btn-devedores" class="sheet-tab">🤝 Devedores</button>
-            <div class="w-px h-8 bg-gray-400 mx-2"></div>
-            <div id="meses-nav-lista" class="flex"></div>
-        </div>
+<div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>Gestão de Presença</h1>
+        <div id="saveIndicator">✓ Salvo</div>
+    </div>
+    
+    <div class="controls">
+        <input type="date" id="datePicker" style="padding: 8px; border-radius: 6px; border: 1px solid #dadce0;">
+        <button onclick="addEmployee()">+ Colaborador</button>
+        <button class="btn-file" onclick="exportCSV()">Exportar CSV</button>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, push, onValue, remove, off, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    <table>
+        <thead><tr><th>Colaborador</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="employeeBody"></tbody>
+    </table>
+</div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyC_nKoE9Y_5KZiWVteb7bTsOPTYXc5g9kY",
-            authDomain: "pegas-controle-de-fluxo.firebaseapp.com",
-            databaseURL: "https://pegas-controle-de-fluxo-default-rtdb.firebaseio.com",
-            projectId: "pegas-controle-de-fluxo",
-        };
+<div id="calendarModal" class="modal">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <button onclick="changeMonth(-1)">◀ Anterior</button>
+            <h3 id="modalTitle" style="margin:0;">Mês</h3>
+            <button onclick="changeMonth(1)">Próximo ▶</button>
+        </div>
+        <div id="calendarDisplay" class="calendar-grid"></div>
+        <div style="margin-top:20px; text-align:right;">
+            <button onclick="document.getElementById('calendarModal').style.display='none'">Fechar</button>
+        </div>
+    </div>
+</div>
 
-        const app = initializeApp(firebaseConfig);
-        const dbFirebase = getDatabase(app);
+<script>
+    let employees = JSON.parse(localStorage.getItem('employees')) || [];
+    let attendance = JSON.parse(localStorage.getItem('attendance')) || {};
+    let viewDate = new Date();
+    let currentEmpId = null;
+
+    const datePicker = document.getElementById('datePicker');
+    datePicker.value = localStorage.getItem('lastDate') || new Date().toISOString().split('T')[0];
+    datePicker.addEventListener('change', () => { localStorage.setItem('lastDate', datePicker.value); render(); });
+
+    function showSave() {
+        const ind = document.getElementById('saveIndicator');
+        ind.style.opacity = '1';
+        setTimeout(() => ind.style.opacity = '0', 2000);
+    }
+
+    function render() {
+        const tbody = document.getElementById('employeeBody');
+        const date = datePicker.value;
+        tbody.innerHTML = employees.map(emp => {
+            const status = attendance[date]?.[emp.id] || '';
+            return `<tr>
+                <td>${emp.name}</td>
+                <td>
+                    <select onchange="update(${emp.id}, this.value)">
+                        <option value="">Selecione...</option>
+                        ${['OK', 'Folga', 'Falta', 'Atestado'].map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                </td>
+                <td>
+                    <button onclick="openCalendar(${emp.id}, '${emp.name}')">Histórico</button>
+                    <button class="btn-del" onclick="deleteEmployee(${emp.id})">Remover</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function update(id, val) {
+        const date = datePicker.value;
+        if (!attendance[date]) attendance[date] = {};
+        attendance[date][id] = val;
+        localStorage.setItem('attendance', JSON.stringify(attendance));
+        showSave();
+    }
+
+    function addEmployee() {
+        const name = prompt("Nome do colaborador:");
+        if (name) {
+            employees.push({ id: Date.now(), name });
+            localStorage.setItem('employees', JSON.stringify(employees));
+            render();
+        }
+    }
+
+    function deleteEmployee(id) {
+        if(confirm("Excluir este colaborador?")) {
+            employees = employees.filter(e => e.id !== id);
+            localStorage.setItem('employees', JSON.stringify(employees));
+            render();
+        }
+    }
+
+    function openCalendar(id, name) {
+        currentEmpId = id;
+        viewDate = new Date();
+        drawCalendar(name);
+        document.getElementById('calendarModal').style.display = 'flex';
+    }
+
+    function changeMonth(delta) {
+        viewDate.setMonth(viewDate.getMonth() + delta);
+        // Busca o nome do colaborador atual para manter o título
+        const emp = employees.find(e => e.id === currentEmpId);
+        drawCalendar(emp.name);
+    }
+
+    function drawCalendar(name) {
+        const grid = document.getElementById('calendarDisplay');
+        const mNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        document.getElementById('modalTitle').innerText = `${name} - ${mNames[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
         
-        const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-        const mesesIds = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+        grid.innerHTML = ['D','S','T','Q','Q','S','S'].map(d => `<div class="day-header">${d}</div>`).join('');
+        
+        const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
+        const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
+        
+        for(let i = 0; i < firstDay; i++) grid.innerHTML += '<div class="day-box"></div>';
+        
+        for(let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${viewDate.getFullYear()}-${(viewDate.getMonth()+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+            const status = attendance[dateStr]?.[currentEmpId] || '';
+            grid.innerHTML += `<div class="day-box">
+                <strong>${d}</strong><span class="status-tag">${status}</span>
+            </div>`;
+        }
+    }
 
-        let localDB = {};
-        let anoAtual = "2026";
-        let mesAtivoGlobal = "jan";
-
-        const montarEstrutura = () => {
-            const mesesNav = document.getElementById('meses-nav-lista');
-            const corpoRes = document.getElementById('corpo-resumo');
-            const subSal = document.getElementById('sub-nav-salario');
-            const subDev = document.getElementById('sub-nav-devedores');
-            const contSal = document.getElementById('container-salario-meses');
-            const contDev = document.getElementById('container-devedores-meses');
-            const contGas = document.getElementById('container-gastos-meses');
-
-            mesesIds.forEach((id, i) => {
-                mesesNav.innerHTML += `<button onclick="mudarAba('${id}')" id="btn-${id}" class="sheet-tab">${mesesNomes[i].substring(0,3)}</button>`;
-                
-                corpoRes.innerHTML += `
-                    <tr class="cursor-pointer transition-all hover:translate-x-1" onclick="mudarAba('${id}')">
-                        <td class="font-bold text-gray-700 border-l-4 border-l-green-600">${mesesNomes[i]}</td>
-                        <td id="res-sal-${id}" class="text-right money text-green-700 font-semibold">R$ 0,00</td>
-                        <td id="res-gas-${id}" class="text-right money text-red-600 font-semibold">R$ 0,00</td>
-                        <td id="res-tot-${id}" class="text-right money font-bold">R$ 0,00</td>
-                    </tr>`;
-                
-                subSal.innerHTML += `<button onclick="mudarMesSubAba('${id}', 'sal')" id="btn-sub-sal-${id}" class="sub-tab border px-3 py-1 bg-white text-[11px] hover:bg-gray-100 uppercase font-bold">${mesesNomes[i].substring(0,3)}</button>`;
-                subDev.innerHTML += `<button onclick="mudarMesSubAba('${id}', 'dev')" id="btn-sub-dev-${id}" class="sub-tab border px-3 py-1 bg-white text-[11px] hover:bg-gray-100 uppercase font-bold">${mesesNomes[i].substring(0,3)}</button>`;
-
-                contSal.innerHTML += `
-                    <div id="sal-mes-${id}" class="sal-content hidden">
-                        <div class="flex flex-col md:flex-row gap-2 mb-4 bg-green-50 p-3 border border-green-200 rounded">
-                            <input type="text" id="desc-sal-${id}" placeholder="Fonte da Receita" class="excel-input flex-1">
-                            <input type="number" id="valor-sal-${id}" placeholder="Valor R$" class="excel-input w-full md:w-32">
-                            <button onclick="addItem('${id}', 'sal')" class="bg-[#217346] hover:bg-green-800 text-white px-6 py-1 rounded font-bold text-sm transition-colors">SALVAR</button>
-                        </div>
-                        <table class="excel-table"><tbody id="tabela-sal-${id}"></tbody></table>
-                    </div>`;
-
-                contDev.innerHTML += `
-                    <div id="dev-mes-${id}" class="dev-content hidden">
-                        <div class="flex flex-col md:flex-row gap-2 mb-4 bg-slate-50 p-3 border border-slate-200 rounded">
-                            <input type="text" id="desc-dev-${id}" placeholder="Quem deve?" class="excel-input flex-1">
-                            <input type="number" id="valor-dev-${id}" placeholder="Valor R$" class="excel-input w-full md:w-32">
-                            <button onclick="addItem('${id}', 'dev')" class="bg-slate-700 hover:bg-slate-800 text-white px-6 py-1 rounded font-bold text-sm transition-colors">SALVAR</button>
-                        </div>
-                        <table class="excel-table"><tbody id="tabela-dev-${id}"></tbody></table>
-                    </div>`;
-
-                contGas.innerHTML += `
-                    <div id="aba-${id}" class="content-tab hidden">
-                        <div class="flex flex-col md:flex-row gap-2 mb-4 bg-gray-100 p-3 border border-gray-300 rounded">
-                            <input type="number" id="dia-${id}" placeholder="Dia" class="excel-input w-full md:w-20">
-                            <input type="text" id="desc-${id}" placeholder="Descrição do gasto" class="excel-input flex-1">
-                            <input type="number" id="valor-${id}" placeholder="Valor R$" class="excel-input w-full md:w-32">
-                            <button onclick="addItem('${id}', 'gas')" class="bg-[#217346] hover:bg-green-800 text-white px-8 py-2 rounded font-bold transition-all">LANÇAR DESPESA</button>
-                        </div>
-                        <table class="excel-table">
-                            <thead><tr><th class="w-16 text-center">DIA</th><th>DESCRIÇÃO</th><th class="text-right">VALOR</th><th class="w-32 text-center print-hidden">AÇÕES</th></tr></thead>
-                            <tbody id="tabela-gas-${id}"></tbody>
-                        </table>
-                    </div>`;
-            });
-        };
-
-        montarEstrutura();
-
-        const carregarDadosDoAno = (ano) => {
-            document.getElementById('label-ano-resumo').innerText = ano;
-            const dbPath = ref(dbFirebase, `pegas_v1/transacoes/${ano}`);
-            off(dbPath);
-            onValue(dbPath, (snap) => {
-                localDB = snap.val() || {};
-                renderTudo();
-            });
-        };
-
-        window.addItem = (mes, tipo) => {
-            const p = tipo === 'sal' ? '-sal-' : (tipo === 'dev' ? '-dev-' : '-');
-            const d = document.getElementById(`desc${p}${mes}`);
-            const v = document.getElementById(`valor${p}${mes}`);
-            const diaSel = document.getElementById(`dia-${mes}`);
-            if(!d.value || !v.value) return;
-
-            const refItem = push(ref(dbFirebase, `pegas_v1/transacoes/${anoAtual}/${mes}/${tipo}`));
-            set(refItem, { 
-                id: refItem.key, 
-                desc: d.value.toUpperCase(), 
-                valor: parseFloat(v.value), 
-                dia: diaSel ? parseInt(diaSel.value) || "" : "", 
-                liquidado: false, 
-                ts: Date.now() 
-            });
-            d.value = ""; v.value = ""; if(diaSel) diaSel.value = "";
-        };
-
-        window.alternarLiquidado = (mes, tipo, id, statusAtual) => {
-            update(ref(dbFirebase, `pegas_v1/transacoes/${anoAtual}/${mes}/${tipo}/${id}`), { liquidado: !statusAtual });
-        };
-
-        window.excluirItem = (mes, tipo, id) => {
-            if(confirm("Excluir este registro permanentemente?")) {
-                remove(ref(dbFirebase, `pegas_v1/transacoes/${anoAtual}/${mes}/${tipo}/${id}`));
+    function exportCSV() {
+        let csv = "Colaborador,Data,Status\n";
+        for (let date in attendance) {
+            for (let id in attendance[date]) {
+                const emp = employees.find(e => e.id == id);
+                csv += `${emp?.name || 'Desconhecido'},${date},${attendance[date][id]}\n`;
             }
-        };
+        }
+        const a = document.createElement('a');
+        a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+        a.download = 'relatorio_presenca.csv';
+        a.click();
+    }
 
-        window.editarItem = (mes, tipo, id, campoParaEditar, valorAtual) => {
-            let promptMsg = campoParaEditar === 'valor' ? "Novo valor numérico (R$):" : "Nova descrição:";
-            let novoValor = prompt(promptMsg, valorAtual);
-
-            if (novoValor !== null && novoValor.trim() !== "") {
-                let updateDados = {};
-                if (campoParaEditar === 'valor') {
-                    let num = parseFloat(novoValor.replace(',', '.'));
-                    if (isNaN(num)) {
-                        alert("ERRO: Insira um número válido.");
-                        return;
-                    }
-                    updateDados[campoParaEditar] = num;
-                } else {
-                    updateDados[campoParaEditar] = novoValor.toUpperCase();
-                }
-                update(ref(dbFirebase, `pegas_v1/transacoes/${anoAtual}/${mes}/${tipo}/${id}`), updateDados);
-            }
-        };
-
-        const renderTudo = () => {
-            mesesIds.forEach(id => {
-                ['sal', 'dev', 'gas'].forEach(tipo => {
-                    const cont = document.getElementById(`tabela-${tipo === 'gas' ? 'gas' : tipo}-${id}`);
-                    if(!cont) return;
-                    const lista = Object.values(localDB[id]?.[tipo] || {}).sort((a,b) => (a.dia || 0) - (b.dia || 0));
-                    
-                    cont.innerHTML = lista.length ? lista.map(i => `
-                        <tr class="${i.liquidado ? 'liquidado' : ''}">
-                            ${tipo === 'gas' ? `<td class="text-center font-bold text-blue-800">${i.dia || '-'}</td>` : ''}
-                            <td class="font-semibold">${i.desc}</td>
-                            <td class="text-right money font-bold">${formatar(i.valor)}</td>
-                            <td class="text-center print-hidden">
-                                <div class="flex justify-center gap-3">
-                                    <button onclick="alternarLiquidado('${id}','${tipo}','${i.id}', ${i.liquidado})" title="Marcar Liquidado" class="${i.liquidado ? 'text-gray-400' : 'text-green-600'} font-bold">✓</button>
-                                    <button onclick="editarItem('${id}','${tipo}','${i.id}', 'desc', '${i.desc}')" title="Editar Descrição" class="text-blue-500">✎</button>
-                                    <button onclick="editarItem('${id}','${tipo}','${i.id}', 'valor', '${i.valor}')" title="Editar Valor" class="text-amber-500 font-bold">$</button>
-                                    <button onclick="excluirItem('${id}','${tipo}','${i.id}')" title="Excluir" class="text-red-400 hover:text-red-700">✕</button>
-                                </div>
-                            </td>
-                        </tr>`).join('') + `
-                        <tr class="bg-gray-100 font-bold border-t-2 border-gray-300">
-                            ${tipo === 'gas' ? `<td></td>` : ''}
-                            <td class="text-right text-[10px] text-gray-500 uppercase">Total:</td>
-                            <td class="text-right money text-gray-900">${formatar(lista.reduce((s, i) => s + i.valor, 0))}</td>
-                            <td class="print-hidden"></td>
-                        </tr>` : `<tr><td colspan="4" class="text-center py-4 text-gray-400 text-xs italic">Sem registros</td></tr>`;
-                });
-                
-                const rSal = Object.values(localDB[id]?.sal || {}).filter(i => !i.liquidado).reduce((s,i) => s+i.valor, 0);
-                const rGas = Object.values(localDB[id]?.gas || {}).filter(i => !i.liquidado).reduce((s,i) => s+i.valor, 0);
-                const rDev = Object.values(localDB[id]?.dev || {}).filter(i => !i.liquidado).reduce((s,i) => s+i.valor, 0);
-                
-                const receitaTotal = rSal + rDev; 
-                document.getElementById(`res-sal-${id}`).innerText = formatar(receitaTotal);
-                document.getElementById(`res-gas-${id}`).innerText = formatar(rGas);
-                
-                const saldo = receitaTotal - rGas;
-                const elTot = document.getElementById(`res-tot-${id}`);
-                elTot.innerText = formatar(saldo);
-                elTot.className = `text-right money font-bold ${saldo >= 0 ? 'text-blue-700' : 'text-red-600'}`;
-            });
-        };
-
-        function formatar(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-
-        window.mudarAba = (id) => {
-            document.querySelectorAll('.content-tab').forEach(e => e.classList.add('hidden'));
-            document.querySelectorAll('.sheet-tab').forEach(b => b.classList.remove('active'));
-            document.getElementById('aba-' + id)?.classList.remove('hidden');
-            document.getElementById('btn-' + id)?.classList.add('active');
-            if(['salario', 'devedores'].includes(id)) mudarMesSubAba(mesAtivoGlobal, id === 'salario' ? 'sal' : 'dev');
-            if(mesesIds.includes(id)) mesAtivoGlobal = id;
-        };
-
-        window.mudarMesSubAba = (id, tipo) => {
-            mesAtivoGlobal = id;
-            document.querySelectorAll(`.${tipo}-content, .sub-tab`).forEach(e => {
-                if(e.classList.contains('sub-tab')) e.classList.remove('active');
-                else e.classList.add('hidden');
-            });
-            document.getElementById(`${tipo}-mes-${id}`)?.classList.remove('hidden');
-            document.getElementById(`btn-sub-${tipo}-${id}`)?.classList.add('active');
-        };
-
-        document.getElementById('select-ano').addEventListener('change', (e) => {
-            anoAtual = e.target.value;
-            carregarDadosDoAno(anoAtual);
-        });
-
-        carregarDadosDoAno(anoAtual);
-    </script>
+    render();
+</script>
 </body>
 </html>
